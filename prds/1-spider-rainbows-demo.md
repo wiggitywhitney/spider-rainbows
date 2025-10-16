@@ -165,17 +165,73 @@ Located in `/public/` directory:
 
 ### Docker Configuration
 
-**Container Setup**: Single container
-- Runs both Vite dev server (port 8080) and Express health server (port 3001)
+**Container Setup**: Single container, single process (Kubernetes best practice)
+- Runs production Express server on port 8080
+- Serves built React app (static files from `dist/`)
+- Provides dedicated `/health` endpoint for Kubernetes liveness/readiness probes
 - Node.js base image
-- Exposes ports 8080 (frontend) and 3001 (health monitoring)
-- Health check endpoint: `GET /health`
+- Exposes only port 8080 (serves both app and health endpoint)
+- Health check endpoint: `GET /health` (returns JSON with status, uptime, timestamp)
+
+**Architecture Decision** (2025-10-16):
+- **One process per container** - Follows Kubernetes philosophy
+- **No dependency checking in health endpoint** - Prevents cascading failures
+- **Production build approach** - Serves optimized static React build, not dev server
+- **Single port** - Simplifies networking and follows standard web app patterns
+
+**Production Server Implementation** (`production-server.js`):
+```javascript
+import express from 'express'
+import path from 'path'
+
+const app = express()
+const PORT = 8080
+
+// Health endpoint for Kubernetes probes
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  })
+})
+
+// Serve static React build
+app.use(express.static(path.join(process.cwd(), 'dist')))
+
+// SPA routing - serve index.html for all other routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'dist', 'index.html'))
+})
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`)
+  console.log(`Health endpoint: http://localhost:${PORT}/health`)
+})
+```
+
+**Kubernetes Probe Configuration Example**:
+```yaml
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  failureThreshold: 3
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 5
+```
 
 ### NPM Scripts
-- `npm run dev` - Start Vite dev server (port 8080)
-- `npm run health` - Start Express health server (port 3001)
-- `npm run build` - Production build
-- `npm run preview` - Preview production build
+- `npm run dev` - Start Vite dev server (port 8080) - for local development
+- `npm run build` - Production build (creates `dist/` directory with optimized static files)
+- `npm start` - Start production Express server (serves built React app + `/health` endpoint on port 8080)
+- `npm run preview` - Preview production build with Vite
 
 ### Configuration Files
 - `vite.config.js` - Vite configuration (port 8080, React plugin)
@@ -229,16 +285,20 @@ Located in `/public/` directory:
 **Success Criteria**: Manual testing confirms both normal and easter egg flows work correctly, responsive sizing functions properly ✅
 
 ### Milestone 5: Docker Containerization Functional
-- [x] Express health monitoring server implemented (port 3001)
-- [x] Health check endpoint `/health` responding correctly
-- [ ] Dockerfile created (single container, Node.js base)
-- [ ] Ports 8080 and 3001 exposed and mapped correctly
-- [ ] Container builds successfully
-- [ ] Container runs with both Vite dev server and Express health server
+- [ ] Production Express server implemented (`production-server.js`)
+- [ ] Server serves static React build from `dist/` directory
+- [ ] Server provides `/health` endpoint (JSON response with status, uptime, timestamp)
+- [ ] Server handles SPA routing (all routes serve `index.html`)
+- [ ] `npm start` script added to package.json
+- [ ] Dockerfile created (single container, single process, Node.js base)
+- [ ] Port 8080 exposed and mapped correctly
+- [ ] Container builds successfully with production React build
+- [ ] Container runs production Express server (one process)
 - [ ] App accessible via browser at localhost:8080
-- [ ] Health endpoint accessible at localhost:3001/health
+- [ ] Health endpoint accessible at localhost:8080/health
+- [ ] Kubernetes-ready: liveness and readiness probe configuration documented
 
-**Success Criteria**: App runs completely within Docker container, both servers operational, health checks passing
+**Success Criteria**: App runs in Docker container following Kubernetes best practices (one process per container), health endpoint responds correctly, no dependency checking in health probe
 
 ### Milestone 6: Production Ready and Documented
 - [ ] All behaviors manually verified (normal flow, easter egg flow)
@@ -322,10 +382,13 @@ The following are explicitly **NOT** included in this PRD:
 - React 19 features available if needed
 - ES modules support required in Node.js
 
-**Docker Strategy:**
-- Single container simplifies deployment
-- Express health server enables monitoring/orchestration
-- Two exposed ports allow flexible deployment scenarios
+**Docker Strategy (Updated 2025-10-16):**
+- Single container, single process follows Kubernetes best practices
+- Production Express server serves both static React build and `/health` endpoint
+- One exposed port (8080) simplifies networking
+- Health endpoint designed for Kubernetes liveness/readiness probes
+- No dependency checking in health endpoint prevents cascading failures
+- Production build approach demonstrates real-world deployment patterns
 
 **Responsive Approach:**
 - Rainbow width tracked via ref
@@ -449,6 +512,53 @@ The following are explicitly **NOT** included in this PRD:
 **Next Session Priorities**:
 - Milestone 5: Docker containerization (create Dockerfile, build and test container)
 
+### 2025-10-16 - Architecture Decision: Kubernetes-Native Health Check Approach
+**Duration**: ~30 minutes (research + decision)
+**Primary Focus**: Health check architecture design and Kubernetes best practices research
+
+**Context**:
+During planning for Milestone 5 (Docker containerization), questions arose about the dual-server approach (Vite dev server on 8080 + separate Express health server on 3001):
+- Should health endpoint check if Vite server is responding?
+- What happens if one server crashes but not the other?
+- Is running two processes in one container a good practice?
+
+**Research Conducted**:
+- Kubernetes official documentation on liveness/readiness probes
+- Industry best practices for health checks in microservices
+- Analysis of cascading failure patterns in health check implementations
+
+**Key Findings**:
+1. **One process per container** is Kubernetes best practice - avoid replicating orchestration logic
+2. **Liveness probes should NOT check dependencies** - prevents cascading failures
+3. **Health endpoints checking other services** create avalanche effects when widely-used services fail
+4. **Kubernetes can probe HTTP endpoints directly** - no need for separate health server
+5. **Production containers should serve production builds**, not dev servers
+
+**Decision Made**: Option B - Production-Grade Single Server
+- Build `production-server.js` that serves React production build + `/health` endpoint
+- Single Express process on port 8080 (both app and health endpoint)
+- Health endpoint only checks Express process health, no dependency checking
+- Follows "one process per container" principle
+
+**Impact**:
+- ✅ Milestone 5 requirements updated to reflect new architecture
+- ✅ Docker configuration simplified (single port, single process)
+- ✅ NPM scripts updated (`npm start` for production server)
+- ⚠️ `server.js` (separate health server) will be deprecated for container use (kept for local dev reference)
+- 🔨 Need to create `production-server.js` before completing Milestone 5
+
+**Rationale**:
+This decision makes the demo more impressive for Kubernetes audiences by:
+- Demonstrating understanding of Kubernetes principles
+- Showing production-realistic deployment patterns
+- Explaining why cascading failures are avoided
+- Following industry best practices that can be cited during demos
+
+**Next Steps**:
+- Create `production-server.js` with integrated health endpoint
+- Create Dockerfile using single-process pattern
+- Document Kubernetes probe configuration for demo purposes
+
 ---
 
 ## Questions & Decisions
@@ -462,6 +572,27 @@ The following are explicitly **NOT** included in this PRD:
 ✅ **Testing approach**: Manual verification only
 ✅ **Priority**: High
 ✅ **Audience**: Platform engineering demo - goal is to be amusing
+
+✅ **Health Check Architecture for Kubernetes** (2025-10-16)
+**Decision**: Use single Express server serving production React build + `/health` endpoint on port 8080, instead of dual-server approach (Vite dev + separate health server)
+
+**Rationale**:
+- **Kubernetes best practice**: One process per container - let Kubernetes handle orchestration, not application code
+- **Avoid cascading failures**: Health endpoints should NOT check dependencies (including internal Vite server) to prevent cascading failures when dependent services hang or fail
+- **Liveness vs Readiness separation**: Kubernetes distinguishes between liveness probes (is process alive?) and readiness probes (can it serve traffic?). Health endpoint should only check if the Express process itself is healthy, not probe other services
+- **Production-realistic**: Demo should showcase real-world patterns - serving production builds, not dev servers in containers
+- **Simpler networking**: Single port (8080) for both app and health checks follows standard web app patterns
+
+**Impact on PRD**:
+- **Milestone 5 requirements changed**: Need to build `production-server.js` instead of running dual servers
+- **NPM scripts updated**: Add `npm start` for production server, deprecate separate `npm run health` in container context
+- **Docker configuration simplified**: Expose only port 8080, single process supervision
+- **Code to deprecate**: `server.js` (separate health server on port 3001) replaced by integrated health endpoint
+- **New code needed**: `production-server.js` to serve static build + health endpoint
+
+**References**:
+- Kubernetes best practices: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+- Research showed dual-process containers and dependency checking in health endpoints create cascading failures
 
 ### Open Questions
 None at this time.
