@@ -1,0 +1,15 @@
+/* SpiderImage.css */
+.spider-container {
+  display: flex;
+  justify-content: center;
+  position: absolute;
+  top: 10%;
+  left: 0;
+  right: 0;
+  z-index: 5;
+}
+
+.spider-image {
+  max-width: 100%;
+  height: auto;
+}

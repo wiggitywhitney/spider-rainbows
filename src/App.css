@@ -1,25 +1,28 @@
-.app {
-  text-align: center;
-  padding: 2rem;
+.app-container {
+  min-height: 95vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  position: relative;
+  padding-top: 1rem;
 }
 
-button {
-  font-size: 1.2rem;
-  padding: 0.6rem 1.2rem;
-  margin: 1rem;
-  cursor: pointer;
-  background: white;
-  border: 2px solid #333;
-  border-radius: 4px;
-  transition: all 0.2s;
+.rainbow-layout {
+  position: relative;
+  width: 80%;
+  max-width: none;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 30px;
 }
 
-button:hover {
-  background: #f0f0f0;
-}
-
-.info {
-  margin-top: 2rem;
-  color: #666;
-  font-style: italic;
+.rainbow-layout img {
+  width: 100%;
+  height: auto;
+  display: block;
+  margin: 0;
 }
