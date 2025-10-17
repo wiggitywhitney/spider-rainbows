@@ -25,6 +25,7 @@ describe('Server Health Endpoint', () => {
     const response = await request(app).get('/health')
 
     expect(response.status).toBe(200)
+    expect(response.headers['content-type']).toMatch(/application\/json/)
     expect(response.body).toHaveProperty('status', 'healthy')
     expect(response.body).toHaveProperty('timestamp')
     expect(response.body).toHaveProperty('uptime')

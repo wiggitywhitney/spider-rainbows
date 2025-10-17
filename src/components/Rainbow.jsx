@@ -5,8 +5,7 @@ const Rainbow = forwardRef(({ isSpiderPresent }, ref) => {
   return (
     <div
       ref={ref}
-      className="rainbow-container"
-      style={{ opacity: isSpiderPresent ? 0.75 : 1 }}
+      className={`rainbow-container ${isSpiderPresent ? 'is-present' : ''}`}
     >
       <img
         src="/Rainbow.png"

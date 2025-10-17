@@ -13,21 +13,18 @@ const App = () => {
   const rainbowRef = useRef(null);
 
   useEffect(() => {
-    const updateRainbowWidth = () => {
-      if (rainbowRef.current) {
-        const currentWidth = rainbowRef.current.offsetWidth;
-        setRainbowWidth(currentWidth);
-      }
-    };
+    if (!rainbowRef.current) return;
 
-    updateRainbowWidth();
-    const timeoutId = setTimeout(updateRainbowWidth, 50);
+    const el = rainbowRef.current;
+    const ro = new ResizeObserver(() => {
+      setRainbowWidth(el.offsetWidth);
+    });
 
-    window.addEventListener('resize', updateRainbowWidth);
-    return () => {
-      clearTimeout(timeoutId);
-      window.removeEventListener('resize', updateRainbowWidth);
-    };
+    ro.observe(el);
+    // Initialize width on mount
+    setRainbowWidth(el.offsetWidth);
+
+    return () => ro.disconnect();
   }, []);
 
   const handleSpiderButtonClick = () => {
