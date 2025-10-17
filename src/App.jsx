@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Rainbow from './components/Rainbow';
 import AddSpiderButton from './components/AddSpiderButton';
 import SpiderImage from './components/SpiderImage';

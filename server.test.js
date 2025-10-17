@@ -1,14 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
 import express from 'express'
-import path from 'path'
-import { fileURLToPath } from 'url'
 
 // Create a test app instance without starting the server
 const createTestApp = () => {
-  const __filename = fileURLToPath(import.meta.url)
-  const __dirname = path.dirname(__filename)
-
   const app = express()
 
   // Health endpoint for Kubernetes probes

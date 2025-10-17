@@ -1,4 +1,3 @@
-import React from 'react';
 import './AddSpiderButton.css';
 
 const AddSpiderButton = ({ onClick, isSpiderPresent, shouldHaveOutline }) => {

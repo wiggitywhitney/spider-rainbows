@@ -1,7 +1,7 @@
-import React from 'react';
+import { forwardRef } from 'react';
 import './Rainbow.css';
 
-const Rainbow = React.forwardRef(({ isSpiderPresent }, ref) => {
+const Rainbow = forwardRef(({ isSpiderPresent }, ref) => {
   return (
     <div
       ref={ref}
@@ -16,6 +16,8 @@ const Rainbow = React.forwardRef(({ isSpiderPresent }, ref) => {
     </div>
   );
 });
+
+Rainbow.displayName = 'Rainbow';
 
 export default Rainbow;
 export { Rainbow };
