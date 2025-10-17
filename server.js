@@ -1,9 +1,15 @@
 import express from 'express'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+// ES module __dirname equivalent
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 const app = express()
-const PORT = 3001
+const PORT = 8080
 
-// Health check endpoint for Docker monitoring
+// Health endpoint for Kubernetes probes
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'healthy',
@@ -12,8 +18,32 @@ app.get('/health', (req, res) => {
   })
 })
 
-// Start the health monitoring server
-app.listen(PORT, () => {
-  console.log(`Health monitoring server running on http://localhost:${PORT}`)
-  console.log(`Health endpoint available at http://localhost:${PORT}/health`)
+// Serve static React build
+app.use(express.static(path.join(__dirname, 'dist')))
+
+// SPA routing - serve index.html for all other routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'))
+})
+
+const server = app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`)
+  console.log(`Health endpoint: http://localhost:${PORT}/health`)
+})
+
+// Graceful shutdown handling for Kubernetes pod termination
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, closing server gracefully...')
+  server.close(() => {
+    console.log('Server closed')
+    process.exit(0)
+  })
+})
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, closing server gracefully...')
+  server.close(() => {
+    console.log('Server closed')
+    process.exit(0)
+  })
 })

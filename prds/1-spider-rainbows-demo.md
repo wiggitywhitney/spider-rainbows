@@ -173,16 +173,22 @@ Located in `/public/` directory:
 - Exposes only port 8080 (serves both app and health endpoint)
 - Health check endpoint: `GET /health` (returns JSON with status, uptime, timestamp)
 
-**Architecture Decision** (2025-10-16):
+**Architecture Decision** (2025-10-16, updated 2025-10-17):
 - **One process per container** - Follows Kubernetes philosophy
 - **No dependency checking in health endpoint** - Prevents cascading failures
 - **Production build approach** - Serves optimized static React build, not dev server
 - **Single port** - Simplifies networking and follows standard web app patterns
+- **Graceful shutdown handling** (2025-10-17) - SIGTERM/SIGINT handlers for zero-downtime deployments
 
-**Production Server Implementation** (`production-server.js`):
+**Production Server Implementation** (`server.js`):
 ```javascript
 import express from 'express'
 import path from 'path'
+import { fileURLToPath } from 'url'
+
+// ES module __dirname equivalent
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 const app = express()
 const PORT = 8080
@@ -197,16 +203,33 @@ app.get('/health', (req, res) => {
 })
 
 // Serve static React build
-app.use(express.static(path.join(process.cwd(), 'dist')))
+app.use(express.static(path.join(__dirname, 'dist')))
 
 // SPA routing - serve index.html for all other routes
 app.get('*', (req, res) => {
-  res.sendFile(path.join(process.cwd(), 'dist', 'index.html'))
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'))
 })
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`)
   console.log(`Health endpoint: http://localhost:${PORT}/health`)
+})
+
+// Graceful shutdown handling for Kubernetes pod termination
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, closing server gracefully...')
+  server.close(() => {
+    console.log('Server closed')
+    process.exit(0)
+  })
+})
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, closing server gracefully...')
+  server.close(() => {
+    console.log('Server closed')
+    process.exit(0)
+  })
 })
 ```
 
@@ -230,7 +253,7 @@ readinessProbe:
 ### NPM Scripts
 - `npm run dev` - Start Vite dev server (port 8080) - for local development
 - `npm run build` - Production build (creates `dist/` directory with optimized static files)
-- `npm start` - Start production Express server (serves built React app + `/health` endpoint on port 8080)
+- `npm start` - Start Express server (serves built React app + `/health` endpoint on port 8080)
 - `npm run preview` - Preview production build with Vite
 
 ### Configuration Files
@@ -284,12 +307,29 @@ readinessProbe:
 
 **Success Criteria**: Manual testing confirms both normal and easter egg flows work correctly, responsive sizing functions properly ✅
 
+### Milestone 4.5: Production Server Refactoring (Pre-Containerization)
+- [x] Create `server.js` with ES module support (using `fileURLToPath` for `__dirname`)
+- [x] Implement health endpoint (`/health`) returning JSON status, uptime, and timestamp
+- [x] Implement static file serving from `dist/` directory
+- [x] Implement SPA routing fallback (all routes → `index.html`)
+- [x] Add graceful shutdown handlers (SIGTERM and SIGINT)
+- [x] Server stores reference for graceful shutdown (`const server = app.listen(...)`)
+- [x] Add `npm start` script to package.json (`node server.js`)
+- [x] Test production build locally (`npm run build`)
+- [x] Test production server locally (`npm start`)
+- [x] Verify app loads at `localhost:8080` with full functionality
+- [x] Verify health endpoint responds at `localhost:8080/health`
+- [x] Delete obsolete health-only server
+- [x] Clean up package.json (remove obsolete `health` script)
+
+**Success Criteria**: Production server runs locally, serves React app correctly, health endpoint responds, graceful shutdown works (Ctrl+C logs shutdown messages) ✅
+
 ### Milestone 5: Docker Containerization Functional
-- [ ] Production Express server implemented (`production-server.js`)
-- [ ] Server serves static React build from `dist/` directory
-- [ ] Server provides `/health` endpoint (JSON response with status, uptime, timestamp)
-- [ ] Server handles SPA routing (all routes serve `index.html`)
-- [ ] `npm start` script added to package.json
+- [x] Production Express server implemented (`server.js`)
+- [x] Server serves static React build from `dist/` directory
+- [x] Server provides `/health` endpoint (JSON response with status, uptime, timestamp)
+- [x] Server handles SPA routing (all routes serve `index.html`)
+- [x] `npm start` script added to package.json
 - [ ] Dockerfile created (single container, single process, Node.js base)
 - [ ] Port 8080 exposed and mapped correctly
 - [ ] Container builds successfully with production React build
@@ -559,6 +599,64 @@ This decision makes the demo more impressive for Kubernetes audiences by:
 - Create Dockerfile using single-process pattern
 - Document Kubernetes probe configuration for demo purposes
 
+### 2025-10-17 - Milestone 4.5 Complete: Production Server with Graceful Shutdown
+**Duration**: ~45 minutes
+**Primary Focus**: Production server implementation, graceful shutdown, and code refactoring
+
+**Completed PRD Items**:
+- [x] Created `server.js` with ES module support (fileURLToPath for __dirname)
+- [x] Implemented `/health` endpoint (JSON with status, uptime, timestamp)
+- [x] Implemented static file serving from `dist/` directory
+- [x] Implemented SPA routing fallback (all routes → index.html)
+- [x] Added graceful shutdown handlers (SIGTERM and SIGINT)
+- [x] Server stores reference for graceful shutdown
+- [x] Added `npm start` script to package.json
+- [x] Tested production build process (`npm run build`)
+- [x] Tested production server locally (`npm start`)
+- [x] Verified app loads at localhost:8080 with full functionality
+- [x] Verified health endpoint responds at localhost:8080/health
+- [x] Deleted obsolete health-only server
+- [x] Cleaned up package.json (removed obsolete `health` script)
+
+**Files Created**:
+- `server.js` - Production Express server with integrated health endpoint and graceful shutdown
+
+**Files Deleted**:
+- Old `server.js` (health-only server on port 3001, now obsolete)
+
+**Files Modified**:
+- `package.json` - Updated scripts: added `npm start`, removed `npm run health`
+- `prds/1-spider-rainbows-demo.md` - Updated architecture decisions, code examples, milestone requirements
+
+**Key Implementation Details**:
+```javascript
+// Graceful shutdown implementation
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, closing server gracefully...')
+  server.close(() => {
+    console.log('Server closed')
+    process.exit(0)
+  })
+})
+```
+
+**Architecture Refinements**:
+- **Naming decision**: Changed from `production-server.js` to `server.js` (Node.js convention)
+- **Single responsibility**: One server handles both app serving and health checks
+- **Production patterns**: Serves optimized React build, not dev server
+- **Kubernetes-ready**: Graceful shutdown for zero-downtime deployments
+
+**Verified Working**:
+- ✅ `npm run build` creates optimized production bundle
+- ✅ `npm start` runs server on port 8080
+- ✅ App loads and displays correctly at http://localhost:8080
+- ✅ Health endpoint returns proper JSON at http://localhost:8080/health
+- ✅ User confirmed "It works" and "the app works!"
+- ✅ Both regular spider and easter egg flows functional
+
+**Next Session Priorities**:
+- Milestone 5: Docker containerization (create Dockerfile, build container, test in Docker)
+
 ---
 
 ## Questions & Decisions
@@ -584,15 +682,46 @@ This decision makes the demo more impressive for Kubernetes audiences by:
 - **Simpler networking**: Single port (8080) for both app and health checks follows standard web app patterns
 
 **Impact on PRD**:
-- **Milestone 5 requirements changed**: Need to build `production-server.js` instead of running dual servers
-- **NPM scripts updated**: Add `npm start` for production server, deprecate separate `npm run health` in container context
+- **Milestone 4.5 added**: Production server refactoring before containerization
+- **Milestone 5 requirements changed**: Need to build `server.js` instead of running dual servers
+- **NPM scripts updated**: Add `npm start` for production server, removed obsolete `npm run health`
 - **Docker configuration simplified**: Expose only port 8080, single process supervision
-- **Code to deprecate**: `server.js` (separate health server on port 3001) replaced by integrated health endpoint
-- **New code needed**: `production-server.js` to serve static build + health endpoint
+- **Code deprecated**: Old health-only server removed, replaced by integrated health endpoint in main server
+- **Cleaner naming**: `server.js` follows Node.js conventions (not "production-server.js")
 
 **References**:
 - Kubernetes best practices: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 - Research showed dual-process containers and dependency checking in health endpoints create cascading failures
+
+✅ **Graceful Shutdown Handling** (2025-10-17)
+**Decision**: Include SIGTERM and SIGINT handlers in production server for graceful shutdown
+
+**Rationale**:
+- **Kubernetes pod lifecycle** - When Kubernetes terminates a pod, it sends SIGTERM before SIGKILL, allowing graceful shutdown
+- **Zero-downtime deployments** - Server stops accepting new connections but finishes in-flight requests before exiting
+- **Demo value** - Shows production awareness and understanding of container orchestration lifecycle
+- **Small implementation cost** - Only ~15 lines of code for significant production readiness improvement
+- **Best practice demonstration** - Valuable talking point during platform engineering demos
+
+**Implementation approach**:
+- Capture server reference: `const server = app.listen(...)`
+- Handle SIGTERM: `server.close()` → finish in-flight requests → `process.exit(0)`
+- Handle SIGINT: Same behavior for local development (Ctrl+C)
+- Log shutdown events for observability
+
+**Impact on PRD**:
+- **Milestone 4.5 added**: Production server refactoring milestone before containerization
+- **Code example updated**: `server.js` specification includes graceful shutdown handlers
+- **Testing requirements**: Verify Ctrl+C logs shutdown messages correctly
+- **Demo enhancement**: Additional talking point about production-grade lifecycle management
+- **Cleaner naming decision**: Use `server.js` (Node.js convention) instead of `production-server.js`
+
+**Why include this for a demo app?**:
+While this simple HTTP server has no long-running requests or critical state to clean up, including graceful shutdown:
+1. Demonstrates production thinking and Kubernetes expertise
+2. Provides educational value for platform engineering audiences
+3. Models best practices that apply to more complex services
+4. Costs minimal implementation effort (~15 lines) for high demo impact
 
 ### Open Questions
 None at this time.
