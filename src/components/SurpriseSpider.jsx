@@ -1,4 +1,3 @@
-import React from 'react';
 import './SurpriseSpider.css';
 
 const SurpriseSpider = ({ rainbowWidth }) => {
