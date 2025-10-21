@@ -91,10 +91,28 @@ wait_for_pods() {
 
     log_info "Waiting for pods in namespace '$namespace' with label '$label' (timeout: ${timeout}s)..."
 
+    # First, wait for at least one pod to exist (kubectl wait fails immediately if no pods match)
+    local elapsed=0
+    local interval=5
+    while [ $elapsed -lt $timeout ]; do
+        if kubectl get pods -n "$namespace" -l "$label" --no-headers 2>/dev/null | grep -q .; then
+            break
+        fi
+        sleep $interval
+        elapsed=$((elapsed + interval))
+    done
+
+    if [ $elapsed -ge $timeout ]; then
+        log_error "No pods with label '$label' appeared in namespace '$namespace' within ${timeout}s"
+        return 1
+    fi
+
+    # Now wait for the pod(s) to be ready
+    local remaining=$((timeout - elapsed))
     if kubectl wait --for=condition=ready pod \
         -l "$label" \
         -n "$namespace" \
-        --timeout="${timeout}s" &> /dev/null; then
+        --timeout="${remaining}s" &> /dev/null; then
         log_success "Pods are ready in namespace '$namespace'"
         return 0
     else
@@ -142,8 +160,15 @@ install_ingress_controller() {
 
     log_success "NGINX Ingress Controller manifest applied"
 
+    # Patch the service to use the correct NodePorts that match Kind's extraPortMappings
+    kubectl patch service ingress-nginx-controller -n ingress-nginx --type='json' \
+        -p='[{"op": "replace", "path": "/spec/ports/0/nodePort", "value": 30080},
+             {"op": "replace", "path": "/spec/ports/1/nodePort", "value": 30443}]'
+
+    log_success "Ingress controller service patched with correct NodePorts"
+
     # Wait for ingress controller to be ready (longer timeout for first-time image pulls)
-    wait_for_pods "ingress-nginx" "app.kubernetes.io/component=controller" 300
+    wait_for_pods "ingress-nginx" "app.kubernetes.io/component=controller" 600
 }
 
 validate_cluster_health() {
@@ -170,6 +195,122 @@ validate_cluster_health() {
 }
 
 # =============================================================================
+# Phase 2: ArgoCD Installation
+# =============================================================================
+
+install_argocd() {
+    log_info "Installing ArgoCD..."
+
+    # Create argocd namespace
+    kubectl create namespace argocd || true
+
+    # Install ArgoCD using official manifests
+    kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+    log_success "ArgoCD manifests applied"
+
+    # Wait for ArgoCD pods to be ready (longer timeout for first-time image pulls)
+    wait_for_pods "argocd" "app.kubernetes.io/name=argocd-server" 600
+}
+
+configure_argocd_password() {
+    log_info "Configuring ArgoCD admin password..."
+
+    # Wait for argocd-server to be ready before password change
+    kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=60s
+
+    # Hash the password using bcrypt (ArgoCD expects bcrypt hashed passwords)
+    # Using argocd CLI inside the pod to generate the hash
+    local password_hash
+    password_hash=$(kubectl exec -n argocd deployment/argocd-server -- argocd account bcrypt --password admin123)
+
+    # Update the argocd-secret with the new password
+    kubectl patch secret argocd-secret -n argocd \
+        -p "{\"stringData\": {\"admin.password\": \"$password_hash\", \"admin.passwordMtime\": \"$(date +%FT%T%Z)\"}}"
+
+    log_success "ArgoCD admin password configured"
+}
+
+install_argocd_ingress() {
+    log_info "Installing ArgoCD ingress..."
+
+    local ingress_file="$(dirname "$0")/argocd-ingress.yaml"
+
+    if [ ! -f "$ingress_file" ]; then
+        log_error "ArgoCD ingress file not found: $ingress_file"
+        exit 1
+    fi
+
+    kubectl apply -f "$ingress_file"
+
+    log_success "ArgoCD ingress applied"
+
+    # Give ingress a moment to be recognized
+    sleep 5
+}
+
+validate_argocd_health() {
+    log_info "Validating ArgoCD health..."
+
+    # Wait for all ArgoCD pods to be ready (with timeout)
+    local timeout=300  # 5 minutes should be enough after argocd-server is already ready
+    local elapsed=0
+    local interval=5
+    local all_ready=false
+
+    while [ $elapsed -lt $timeout ]; do
+        local argocd_pods_ready
+        argocd_pods_ready=$(kubectl get pods -n argocd --no-headers 2>/dev/null | grep -v "Completed" | awk '{print $2}')
+
+        all_ready=true
+        for pod_status in $argocd_pods_ready; do
+            if [[ "$pod_status" != "1/1" ]] && [[ "$pod_status" != "2/2" ]]; then
+                all_ready=false
+                break
+            fi
+        done
+
+        if [ "$all_ready" = true ]; then
+            break
+        fi
+
+        sleep $interval
+        elapsed=$((elapsed + interval))
+    done
+
+    if [ "$all_ready" = true ]; then
+        log_success "All ArgoCD pods are healthy"
+    else
+        log_error "Some ArgoCD pods are not ready after ${timeout}s"
+        kubectl get pods -n argocd
+        exit 1
+    fi
+
+    # Check ArgoCD UI is accessible via ingress
+    log_info "Testing ArgoCD UI access..."
+
+    local max_attempts=30
+    local attempt=0
+    local ui_accessible=false
+
+    while [ $attempt -lt $max_attempts ]; do
+        if curl -k -s -o /dev/null -w "%{http_code}" https://argocd.127.0.0.1.nip.io | grep -q "200\|302\|307"; then
+            ui_accessible=true
+            break
+        fi
+        attempt=$((attempt + 1))
+        sleep 2
+    done
+
+    if [ "$ui_accessible" = true ]; then
+        log_success "ArgoCD UI is accessible via ingress"
+    else
+        log_error "ArgoCD UI is not accessible via ingress after ${max_attempts} attempts"
+        exit 1
+    fi
+}
+
+# =============================================================================
 # Main Execution
 # =============================================================================
 
@@ -185,17 +326,27 @@ main() {
     install_ingress_controller
     validate_cluster_health
 
+    # Phase 2: ArgoCD Installation
+    install_argocd
+    configure_argocd_password
+    install_argocd_ingress
+    validate_argocd_health
+
     # Success summary
     echo ""
     log_success "=========================================="
-    log_success "Phase 1 Complete: Cluster with Ingress"
+    log_success "Phase 2 Complete: ArgoCD Installed"
     log_success "=========================================="
     echo ""
     log_info "Cluster: $CLUSTER_NAME"
     log_info "Context: kind-$CLUSTER_NAME"
     echo ""
+    log_info "ArgoCD Access:"
+    log_info "  URL: https://argocd.127.0.0.1.nip.io"
+    log_info "  Username: admin"
+    log_info "  Password: admin123"
+    echo ""
     log_info "Next steps:"
-    log_info "  - Phase 2: Install ArgoCD (coming soon)"
     log_info "  - Phase 3: Configure GitOps repository connection"
     log_info "  - Phase 4: Deploy spider-rainbows application"
     echo ""
