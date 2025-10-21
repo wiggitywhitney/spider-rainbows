@@ -76,11 +76,10 @@ The script creates the environment once; the conference demo then shows a develo
 - [x] ArgoCD admin password displayed at end for UI login
 
 ### Won't Have (Out of Scope)
-- CI/CD pipeline setup (GitHub Actions) - separate concern
-- CD process for updating GitOps repo manifests - handled separately
-- ArgoCD Image Updater - not needed for demo
+- ArgoCD Image Updater - not needed for demo (using simple CI/CD manifest updates instead)
 - Multiple environments (dev/staging/prod) - single demo environment only
 - Helm charts - using plain Kubernetes manifests
+- Advanced GitOps patterns (app-of-apps, progressive delivery) - basic auto-sync is sufficient
 
 ---
 
@@ -225,16 +224,22 @@ Script validates:
 
 ---
 
-### Phase 4: Application Ingress
-**Goal**: Make spider-rainbows accessible via `nip.io` domain
+### Phase 4: Application Deployment & CI/CD Automation
+**Goal**: Make spider-rainbows accessible via `nip.io` domain and automate deployments
 
 **Tasks**:
 - Create `kind/spider-rainbows-ingress.yaml`
 - Apply ingress resource (or include in GitOps repo)
 - Test app access at `http://spider-rainbows.127.0.0.1.nip.io`
 - Test health endpoint at `http://spider-rainbows.127.0.0.1.nip.io/health`
+- Add CI/CD step to update GitOps repo manifests with new image tags
+- Configure GitHub Actions to update `spider-rainbows-platform-config` repo with commit SHA tags (not `latest`)
+- Test full workflow: code change → CI/CD → GitOps update → ArgoCD sync → deployment
 
-**Validation**: App loads in browser, health check returns 200
+**Validation**:
+- App loads in browser, health check returns 200
+- CI/CD pipeline successfully updates GitOps repo with new image tags
+- ArgoCD automatically syncs and deploys new image versions
 
 ---
 
@@ -344,6 +349,21 @@ Script validates:
 - Easier to debug - know exactly where failure occurred
 - Re-running entire script is acceptable for demo setup scenario
 **Impact**: Script uses `set -e` and `set -o pipefail`; no silent failures or warning-only errors
+
+### Decision 6: CI/CD GitOps Integration in Phase 4
+**Date**: 2025-10-21
+**Decision**: Add CI/CD automation to update GitOps manifests as part of Phase 4 (Application Deployment)
+**Rationale**:
+- Complete demo requires automated workflow: code change → CI/CD → ArgoCD sync → deployment
+- Must prove manual deployment works (Phase 3-4) before automating it
+- CI/CD automation completes the GitOps story for conference demo
+- Using commit SHA tags (not `latest`) provides traceability and rollback capability
+- Extends existing `build-push.yml` workflow that already creates SHA-tagged images
+**Impact**:
+- Phase 4 expands to include CI/CD automation tasks
+- GitHub Actions will update `spider-rainbows-platform-config` repo with new image tags
+- Demo can show complete end-to-end automation from code commit to live deployment
+- Success criteria includes validating full automated workflow
 
 ---
 
