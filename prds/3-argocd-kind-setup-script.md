@@ -62,13 +62,13 @@ The script creates the environment once; the conference demo then shows a develo
 ### Must Have
 - [ ] Single command (`./kind/setup-argocd.sh`) creates entire environment without manual intervention
 - [x] ArgoCD UI accessible at `https://argocd.127.0.0.1.nip.io` without port-forwarding
-- [ ] Spider-rainbows app accessible at `http://spider-rainbows.127.0.0.1.nip.io`
-- [ ] ArgoCD configured with auto-sync enabled for spider-rainbows application
+- [x] Spider-rainbows app accessible at `http://spider-rainbows.127.0.0.1.nip.io`
+- [x] ArgoCD configured with auto-sync enabled for spider-rainbows application
 - [ ] Script validates all components are healthy before completion (cluster, ArgoCD, app pods, ingress)
-- [ ] App `/health` endpoint returns 200 OK via ingress
+- [x] App `/health` endpoint returns 200 OK via ingress
 - [ ] Script completes in under 5 minutes on typical hardware
 - [x] Clear console output showing progress at each major step
-- [ ] Works with public GitOps repository (no auth required)
+- [x] Works with public GitOps repository (no auth required)
 
 ### Should Have
 - [x] Script is idempotent (can detect existing cluster and skip/update gracefully)
@@ -120,7 +120,7 @@ The script creates the environment once; the conference demo then shows a develo
 - `kind/cluster-config.yaml` - Kind cluster configuration with ingress
 - `kind/argocd-ingress.yaml` - Ingress for ArgoCD UI
 - `kind/spider-rainbows-app.yaml` - ArgoCD Application CR
-- `kind/spider-rainbows-ingress.yaml` - Ingress for app
+- Note: Spider-rainbows ingress lives in GitOps repo, not in kind/ directory
 
 **Files to Delete:**
 - `kind/deployment.yaml` - Replaced by GitOps repo manifests (avoiding confusion)
@@ -290,8 +290,8 @@ Script validates:
 
 - [x] **Milestone 1**: Kind cluster with working ingress controller created and validated
 - [x] **Milestone 2**: ArgoCD installed, accessible via `nip.io` ingress, and healthy
-- [ ] **Milestone 3**: ArgoCD connected to GitOps repo and spider-rainbows application synced
-- [ ] **Milestone 4**: Spider-rainbows app accessible via `nip.io` domain with health check passing
+- [x] **Milestone 3**: ArgoCD connected to GitOps repo and spider-rainbows application synced
+- [ ] **Milestone 4**: Spider-rainbows app accessible via `nip.io` domain with health check passing AND CI/CD automation complete
 - [ ] **Milestone 5**: Health validation and script completion reporting working reliably
 - [ ] **Milestone 6**: Documentation complete and deprecated files removed; ready for conference demo
 
@@ -364,6 +364,24 @@ Script validates:
 - GitHub Actions will update `spider-rainbows-platform-config` repo with new image tags
 - Demo can show complete end-to-end automation from code commit to live deployment
 - Success criteria includes validating full automated workflow
+
+### Decision 7: GitOps Repository Lifecycle and Script Scope
+**Date**: 2025-10-21
+**Decision**: GitOps repository (`spider-rainbows-platform-config`) is created once and persists; setup script applies Application CR to deploy from existing repo
+**Rationale**:
+- GitOps repo is the permanent source of truth, lives on GitHub independently of cluster lifecycle
+- Setup script doesn't need to create/populate GitOps repo every time it runs
+- Script's job is to create ephemeral infrastructure (cluster, ArgoCD) and connect to persistent config
+- Separates concerns: config management (GitOps repo) vs infrastructure provisioning (setup script)
+- Enables the demo workflow: script creates environment → GitOps repo already has config → ArgoCD syncs automatically
+- Allows tear down and recreation of cluster without losing configuration state
+**Impact**:
+- Script Phase 3 includes applying `kind/spider-rainbows-app.yaml` (ArgoCD Application CR)
+- Script validates ArgoCD sync completes and spider-rainbows app is healthy
+- GitOps repo creation becomes a one-time prerequisite documented in README
+- Script becomes truly repeatable: can tear down cluster and recreate with single command
+- Success criteria "Single command creates entire environment" is achievable (assuming GitOps repo prerequisite met)
+- User Journey updated to clarify GitOps repo is created once before demo prep
 
 ---
 
@@ -495,6 +513,57 @@ Script validates:
 - Phase 3: Configure GitOps repository connection
 - Create ArgoCD Application CR for spider-rainbows
 - Configure auto-sync and self-heal for GitOps workflow
+
+### 2025-10-21: Phase 3 Implementation - GitOps Repository Connection
+**Duration**: ~1.5 hours
+**Status**: Phase 3 Complete ✅
+
+**Completed Activities**:
+- Created public GitHub repository `spider-rainbows-platform-config`
+  - Repository URL: https://github.com/wiggitywhitney/spider-rainbows-platform-config
+  - Cloned to `/Users/whitney.lee/Documents/Repositories/` for ongoing maintenance
+- Created complete GitOps repository structure:
+  - `spider-rainbows/deployment.yaml` - Deployment with 2 replicas, health probes, resource limits
+  - `spider-rainbows/service.yaml` - ClusterIP service exposing port 80
+  - `spider-rainbows/ingress.yaml` - Ingress for `spider-rainbows.127.0.0.1.nip.io` access
+  - `README.md` - Documentation of structure, access URLs, and ArgoCD management
+  - `argocd/` directory - Reserved for future self-management configuration
+- Created ArgoCD Application CR (`kind/spider-rainbows-app.yaml`)
+  - Points to GitOps repo: `https://github.com/wiggitywhitney/spider-rainbows-platform-config.git`
+  - Auto-sync enabled with prune and self-heal
+  - Targets `spider-rainbows` directory in repo
+- Applied Application CR and validated ArgoCD sync
+  - ArgoCD Application status: "Synced" and "Healthy"
+  - 2/2 spider-rainbows pods running successfully
+  - Health endpoint verified: `http://spider-rainbows.127.0.0.1.nip.io/health` returns 200 OK
+- Verified ingress routing working correctly
+  - App accessible at `http://spider-rainbows.127.0.0.1.nip.io`
+  - Ingress properly configured with nginx controller
+
+**Milestone Completed**:
+- ✅ **Milestone 3**: ArgoCD connected to GitOps repo and spider-rainbows application synced
+
+**Success Criteria Completed**:
+- ✅ Spider-rainbows app accessible at `http://spider-rainbows.127.0.0.1.nip.io`
+- ✅ ArgoCD configured with auto-sync enabled for spider-rainbows application
+- ✅ App `/health` endpoint returns 200 OK via ingress
+- ✅ Works with public GitOps repository (no auth required)
+
+**Technical Insights**:
+- Ingress for spider-rainbows lives in GitOps repo (not `kind/` directory) as it's application config
+- ArgoCD Application CR with auto-sync handles entire deployment lifecycle automatically
+- GitOps repo serves as single source of truth for application configuration
+- Manual setup steps (create repo, apply Application CR) could be automated in future iterations
+
+**Phase 4 Status**:
+- ⏳ App is accessible and working, BUT CI/CD automation not yet implemented
+- ⏳ Still need to add GitHub Actions workflow to update GitOps repo manifests
+- ⏳ Milestone 4 blocked on CI/CD automation completion
+
+**Next Session Priorities**:
+- Phase 4: Add CI/CD automation to update GitOps repo with new image tags on code changes
+- Phase 5: Add comprehensive health checks to setup script
+- Phase 6: Documentation and cleanup (delete `kind/deployment.yaml`, update README)
 
 ---
 

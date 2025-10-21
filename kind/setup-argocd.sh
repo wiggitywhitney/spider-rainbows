@@ -311,6 +311,121 @@ validate_argocd_health() {
 }
 
 # =============================================================================
+# Phase 3: GitOps Repository Connection
+# =============================================================================
+
+deploy_spider_rainbows_app() {
+    log_info "Deploying spider-rainbows application via ArgoCD..."
+
+    local app_file="$(dirname "$0")/spider-rainbows-app.yaml"
+
+    if [ ! -f "$app_file" ]; then
+        log_error "ArgoCD Application file not found: $app_file"
+        exit 1
+    fi
+
+    # Apply the ArgoCD Application CR
+    kubectl apply -f "$app_file"
+
+    log_success "ArgoCD Application CR applied"
+}
+
+validate_app_sync() {
+    log_info "Waiting for ArgoCD to sync spider-rainbows application..."
+
+    # Wait for Application to exist
+    local timeout=60
+    local elapsed=0
+    local interval=2
+
+    while [ $elapsed -lt $timeout ]; do
+        if kubectl get application spider-rainbows -n argocd &>/dev/null; then
+            break
+        fi
+        sleep $interval
+        elapsed=$((elapsed + interval))
+    done
+
+    if ! kubectl get application spider-rainbows -n argocd &>/dev/null; then
+        log_error "ArgoCD Application 'spider-rainbows' not found after ${timeout}s"
+        exit 1
+    fi
+
+    # Wait for sync to complete (timeout 5 minutes for image pulls)
+    timeout=300
+    elapsed=0
+    interval=5
+
+    while [ $elapsed -lt $timeout ]; do
+        local sync_status
+        local health_status
+
+        sync_status=$(kubectl get application spider-rainbows -n argocd -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "Unknown")
+        health_status=$(kubectl get application spider-rainbows -n argocd -o jsonpath='{.status.health.status}' 2>/dev/null || echo "Unknown")
+
+        if [[ "$sync_status" == "Synced" ]] && [[ "$health_status" == "Healthy" ]]; then
+            log_success "Application synced and healthy"
+            break
+        fi
+
+        if [[ "$health_status" == "Degraded" ]]; then
+            log_error "Application health is Degraded"
+            kubectl get application spider-rainbows -n argocd -o yaml
+            exit 1
+        fi
+
+        sleep $interval
+        elapsed=$((elapsed + interval))
+    done
+
+    if [[ "$sync_status" != "Synced" ]] || [[ "$health_status" != "Healthy" ]]; then
+        log_error "Application did not become healthy after ${timeout}s"
+        log_error "Sync Status: $sync_status, Health Status: $health_status"
+        kubectl get application spider-rainbows -n argocd
+        exit 1
+    fi
+
+    # Wait for spider-rainbows pods to be ready
+    wait_for_pods "default" "app=spider-rainbows" 300
+
+    log_success "Spider-rainbows pods are running"
+}
+
+validate_app_access() {
+    log_info "Testing spider-rainbows app access..."
+
+    # Wait a moment for ingress to be fully ready
+    sleep 5
+
+    local max_attempts=30
+    local attempt=0
+    local app_accessible=false
+
+    while [ $attempt -lt $max_attempts ]; do
+        local http_code
+        http_code=$(curl -s -o /dev/null -w "%{http_code}" http://spider-rainbows.127.0.0.1.nip.io/health 2>/dev/null || echo "000")
+
+        if [[ "$http_code" == "200" ]]; then
+            app_accessible=true
+            break
+        fi
+
+        attempt=$((attempt + 1))
+        sleep 2
+    done
+
+    if [ "$app_accessible" = true ]; then
+        log_success "Spider-rainbows app is accessible via ingress"
+    else
+        log_error "Spider-rainbows app is not accessible after ${max_attempts} attempts"
+        log_error "Check ingress and service configuration"
+        kubectl get ingress -n default
+        kubectl get svc -n default
+        exit 1
+    fi
+}
+
+# =============================================================================
 # Main Execution
 # =============================================================================
 
@@ -332,11 +447,16 @@ main() {
     install_argocd_ingress
     validate_argocd_health
 
+    # Phase 3: GitOps Repository Connection & App Deployment
+    deploy_spider_rainbows_app
+    validate_app_sync
+    validate_app_access
+
     # Success summary
     echo ""
-    log_success "=========================================="
-    log_success "Phase 2 Complete: ArgoCD Installed"
-    log_success "=========================================="
+    log_success "=============================================="
+    log_success "✅ Setup Complete: GitOps Demo Ready"
+    log_success "=============================================="
     echo ""
     log_info "Cluster: $CLUSTER_NAME"
     log_info "Context: kind-$CLUSTER_NAME"
@@ -346,9 +466,16 @@ main() {
     log_info "  Username: admin"
     log_info "  Password: admin123"
     echo ""
+    log_info "Spider-Rainbows App:"
+    log_info "  URL: http://spider-rainbows.127.0.0.1.nip.io"
+    log_info "  Health: http://spider-rainbows.127.0.0.1.nip.io/health"
+    echo ""
+    log_info "Demo is ready! 🎉"
+    log_info ""
     log_info "Next steps:"
-    log_info "  - Phase 3: Configure GitOps repository connection"
-    log_info "  - Phase 4: Deploy spider-rainbows application"
+    log_info "  - Open ArgoCD UI to view application status"
+    log_info "  - Test app at http://spider-rainbows.127.0.0.1.nip.io"
+    log_info "  - Make code changes to trigger CI/CD workflow (Phase 4)"
     echo ""
 }
 
