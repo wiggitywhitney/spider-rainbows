@@ -426,6 +426,106 @@ validate_app_access() {
 }
 
 # =============================================================================
+# Phase 5: Final Comprehensive Health Validation
+# =============================================================================
+
+validate_all_components() {
+    log_info "Running final health validation across all components..."
+    echo ""
+
+    local failures=0
+
+    # 1. Cluster Health
+    log_info "[1/6] Validating cluster..."
+    if kubectl get nodes --no-headers 2>/dev/null | grep -q "Ready"; then
+        local node_count
+        node_count=$(kubectl get nodes --no-headers 2>/dev/null | grep "Ready" | wc -l | tr -d ' ')
+        log_success "  ✓ Cluster nodes: $node_count Ready"
+    else
+        log_error "  ✗ Cluster nodes: Not Ready"
+        failures=$((failures + 1))
+    fi
+
+    # 2. Ingress Controller
+    log_info "[2/6] Validating ingress controller..."
+    local ingress_ready
+    ingress_ready=$(kubectl get pods -n ingress-nginx -l app.kubernetes.io/component=controller -o jsonpath='{.items[*].status.conditions[?(@.type=="Ready")].status}' 2>/dev/null)
+    if [[ "$ingress_ready" == "True" ]]; then
+        log_success "  ✓ Ingress controller: Healthy"
+    else
+        log_error "  ✗ Ingress controller: Not Healthy"
+        failures=$((failures + 1))
+    fi
+
+    # 3. ArgoCD Pods
+    log_info "[3/6] Validating ArgoCD components..."
+    local argocd_pod_count
+    local argocd_ready_count
+    argocd_pod_count=$(kubectl get pods -n argocd --no-headers 2>/dev/null | grep -v "Completed" | wc -l | tr -d ' ')
+    argocd_ready_count=$(kubectl get pods -n argocd --no-headers 2>/dev/null | grep -v "Completed" | grep "1/1\|2/2" | wc -l | tr -d ' ')
+
+    if [[ "$argocd_pod_count" -eq "$argocd_ready_count" ]] && [[ "$argocd_pod_count" -gt 0 ]]; then
+        log_success "  ✓ ArgoCD pods: $argocd_ready_count/$argocd_pod_count ready"
+    else
+        log_error "  ✗ ArgoCD pods: $argocd_ready_count/$argocd_pod_count ready"
+        failures=$((failures + 1))
+    fi
+
+    # 4. ArgoCD UI Access
+    log_info "[4/6] Validating ArgoCD UI access..."
+    local argocd_http_code
+    argocd_http_code=$(curl -k -s -o /dev/null -w "%{http_code}" --max-time 5 https://argocd.127.0.0.1.nip.io 2>/dev/null || echo "000")
+    if [[ "$argocd_http_code" =~ ^(200|302|307)$ ]]; then
+        log_success "  ✓ ArgoCD UI: Accessible (HTTP $argocd_http_code)"
+    else
+        log_error "  ✗ ArgoCD UI: Not accessible (HTTP $argocd_http_code)"
+        failures=$((failures + 1))
+    fi
+
+    # 5. ArgoCD Application Status
+    log_info "[5/6] Validating spider-rainbows ArgoCD Application..."
+    local sync_status
+    local health_status
+    sync_status=$(kubectl get application spider-rainbows -n argocd -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "Unknown")
+    health_status=$(kubectl get application spider-rainbows -n argocd -o jsonpath='{.status.health.status}' 2>/dev/null || echo "Unknown")
+
+    if [[ "$sync_status" == "Synced" ]] && [[ "$health_status" == "Healthy" ]]; then
+        log_success "  ✓ ArgoCD Application: Synced and Healthy"
+    else
+        log_error "  ✗ ArgoCD Application: $sync_status / $health_status"
+        failures=$((failures + 1))
+    fi
+
+    # 6. Spider-Rainbows App Access
+    log_info "[6/6] Validating spider-rainbows app access..."
+    local app_pod_count
+    local app_ready_count
+    app_pod_count=$(kubectl get pods -n default -l app=spider-rainbows --no-headers 2>/dev/null | wc -l | tr -d ' ')
+    app_ready_count=$(kubectl get pods -n default -l app=spider-rainbows --no-headers 2>/dev/null | grep "1/1" | wc -l | tr -d ' ')
+
+    if [[ "$app_pod_count" -eq "$app_ready_count" ]] && [[ "$app_pod_count" -gt 0 ]]; then
+        log_success "  ✓ Spider-rainbows pods: $app_ready_count/$app_pod_count ready"
+    else
+        log_error "  ✗ Spider-rainbows pods: $app_ready_count/$app_pod_count ready"
+        failures=$((failures + 1))
+    fi
+
+    local health_http_code
+    health_http_code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://spider-rainbows.127.0.0.1.nip.io/health 2>/dev/null || echo "000")
+    if [[ "$health_http_code" == "200" ]]; then
+        log_success "  ✓ Spider-rainbows /health endpoint: HTTP 200"
+    else
+        log_error "  ✗ Spider-rainbows /health endpoint: HTTP $health_http_code"
+        failures=$((failures + 1))
+    fi
+
+    echo ""
+
+    # Return failure count
+    return $failures
+}
+
+# =============================================================================
 # Main Execution
 # =============================================================================
 
@@ -452,31 +552,56 @@ main() {
     validate_app_sync
     validate_app_access
 
-    # Success summary
+    # Phase 5: Final Comprehensive Health Check
     echo ""
-    log_success "=============================================="
-    log_success "✅ Setup Complete: GitOps Demo Ready"
-    log_success "=============================================="
+    log_info "======================================"
+    log_info "Final System Health Validation"
+    log_info "======================================"
     echo ""
-    log_info "Cluster: $CLUSTER_NAME"
-    log_info "Context: kind-$CLUSTER_NAME"
-    echo ""
-    log_info "ArgoCD Access:"
-    log_info "  URL: https://argocd.127.0.0.1.nip.io"
-    log_info "  Username: admin"
-    log_info "  Password: admin123"
-    echo ""
-    log_info "Spider-Rainbows App:"
-    log_info "  URL: http://spider-rainbows.127.0.0.1.nip.io"
-    log_info "  Health: http://spider-rainbows.127.0.0.1.nip.io/health"
-    echo ""
-    log_info "Demo is ready! 🎉"
-    log_info ""
-    log_info "Next steps:"
-    log_info "  - Open ArgoCD UI to view application status"
-    log_info "  - Test app at http://spider-rainbows.127.0.0.1.nip.io"
-    log_info "  - Make code changes to trigger CI/CD workflow (Phase 4)"
-    echo ""
+
+    if validate_all_components; then
+        # Success summary
+        echo ""
+        log_success "=============================================="
+        log_success "✅ Setup Complete: GitOps Demo Ready"
+        log_success "=============================================="
+        echo ""
+        log_info "Cluster: $CLUSTER_NAME"
+        log_info "Context: kind-$CLUSTER_NAME"
+        echo ""
+        log_info "ArgoCD Access:"
+        log_info "  URL: https://argocd.127.0.0.1.nip.io"
+        log_info "  Username: admin"
+        log_info "  Password: admin123"
+        echo ""
+        log_info "Spider-Rainbows App:"
+        log_info "  URL: http://spider-rainbows.127.0.0.1.nip.io"
+        log_info "  Health: http://spider-rainbows.127.0.0.1.nip.io/health"
+        echo ""
+        log_info "Demo is ready! 🎉"
+        log_info ""
+        log_info "Next steps:"
+        log_info "  - Open ArgoCD UI to view application status"
+        log_info "  - Test app at http://spider-rainbows.127.0.0.1.nip.io"
+        log_info "  - Make code changes to trigger CI/CD workflow (Phase 4)"
+        echo ""
+    else
+        # Validation failed
+        echo ""
+        log_error "=============================================="
+        log_error "⚠️  Setup completed with validation failures"
+        log_error "=============================================="
+        echo ""
+        log_warning "Some components may not be fully healthy."
+        log_warning "Review the validation output above and troubleshoot before using for demo."
+        echo ""
+        log_info "Troubleshooting commands:"
+        log_info "  kubectl get nodes"
+        log_info "  kubectl get pods -A"
+        log_info "  kubectl get application spider-rainbows -n argocd"
+        echo ""
+        exit 1
+    fi
 }
 
 main "$@"

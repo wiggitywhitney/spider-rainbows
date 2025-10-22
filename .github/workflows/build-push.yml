@@ -46,3 +46,42 @@ jobs:
 
       - name: Image digest
         run: echo "Image pushed with digest ${{ steps.meta.outputs.digest }}"
+
+      - name: Extract short SHA for GitOps update
+        id: sha
+        run: echo "short_sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: Update GitOps repository
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITOPS_REPO: wiggitywhitney/spider-rainbows-platform-config
+          IMAGE_TAG: main-${{ steps.sha.outputs.short_sha }}
+        run: |
+          echo "Attempting to update GitOps repo with GITHUB_TOKEN..."
+          echo "Target image tag: $IMAGE_TAG"
+
+          # Configure git
+          git config --global user.name "spider-rainbows-bot"
+          git config --global user.email "bot@spider-rainbows.local"
+
+          # Clone GitOps repository using GITHUB_TOKEN
+          git clone https://x-access-token:${GITHUB_TOKEN}@github.com/${GITOPS_REPO}.git gitops-repo
+
+          cd gitops-repo
+
+          # Update deployment.yaml with new image tag
+          sed -i "s|image: wiggitywhitney/spider-rainbows:.*|image: wiggitywhitney/spider-rainbows:${IMAGE_TAG}|g" spider-rainbows/deployment.yaml
+
+          # Show the change
+          echo "Updated deployment.yaml:"
+          grep "image:" spider-rainbows/deployment.yaml
+
+          # Commit and push
+          git add spider-rainbows/deployment.yaml
+          git commit -m "chore: update spider-rainbows image to ${IMAGE_TAG}
+
+          Automated update from spider-rainbows CI/CD pipeline
+          Source commit: ${{ github.sha }}
+          Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          git push origin main
