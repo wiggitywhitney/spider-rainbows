@@ -2,7 +2,9 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - feature/prd-3-argocd-setup  # Temporary: for testing GitOps workflow
 
 env:
   REGISTRY_IMAGE: wiggitywhitney/spider-rainbows
