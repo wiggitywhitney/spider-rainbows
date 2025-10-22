@@ -2,9 +2,7 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches:
-      - main
-      - feature/prd-3-argocd-setup  # Temporary: for testing GitOps workflow
+    branches: [ main ]
 
 env:
   REGISTRY_IMAGE: wiggitywhitney/spider-rainbows
@@ -55,19 +53,19 @@ jobs:
 
       - name: Update GitOps repository
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITOPS_TOKEN: ${{ secrets.GITOPS_REPO_TOKEN }}
           GITOPS_REPO: wiggitywhitney/spider-rainbows-platform-config
           IMAGE_TAG: main-${{ steps.sha.outputs.short_sha }}
         run: |
-          echo "Attempting to update GitOps repo with GITHUB_TOKEN..."
+          echo "Updating GitOps repo with new image tag..."
           echo "Target image tag: $IMAGE_TAG"
 
           # Configure git
           git config --global user.name "spider-rainbows-bot"
           git config --global user.email "bot@spider-rainbows.local"
 
-          # Clone GitOps repository using GITHUB_TOKEN
-          git clone https://x-access-token:${GITHUB_TOKEN}@github.com/${GITOPS_REPO}.git gitops-repo
+          # Clone GitOps repository using PAT
+          git clone https://x-access-token:${GITOPS_TOKEN}@github.com/${GITOPS_REPO}.git gitops-repo
 
           cd gitops-repo
 
