@@ -290,7 +290,7 @@ Script validates:
 - [x] **Milestone 1**: Kind cluster with working ingress controller created and validated
 - [x] **Milestone 2**: ArgoCD installed, accessible via `nip.io` ingress, and healthy
 - [x] **Milestone 3**: ArgoCD connected to GitOps repo and spider-rainbows application synced
-- [ ] **Milestone 4**: Spider-rainbows app accessible via `nip.io` domain with health check passing AND CI/CD automation complete
+- [x] **Milestone 4**: Spider-rainbows app accessible via `nip.io` domain with health check passing AND CI/CD automation complete
 - [x] **Milestone 5**: Health validation and script completion reporting working reliably
 - [ ] **Milestone 6**: Documentation complete and deprecated files removed; ready for conference demo
 
@@ -689,6 +689,63 @@ Script validates:
 **Next Session Priorities**:
 - Phase 4: Add CI/CD automation to update GitOps repo manifests on code changes
 - Phase 6: Documentation and cleanup (delete `kind/deployment.yaml`, update README)
+
+### 2025-10-22: Phase 4 Implementation - CI/CD GitOps Automation
+**Duration**: ~2.5 hours
+**Status**: Phase 4 Complete ✅
+
+**Completed Activities**:
+- Analyzed existing `build-push.yml` workflow
+  - Confirmed SHA-tagged images already being created (`main-<sha>`)
+  - Workflow triggers on push to main branch
+  - Pushes to DockerHub: `wiggitywhitney/spider-rainbows`
+- Designed and implemented GitOps update automation
+  - Added new workflow step to update GitOps repository
+  - Extracts short SHA (7 chars) for image tagging
+  - Clones `spider-rainbows-platform-config` repo
+  - Updates `deployment.yaml` with new image tag
+  - Commits and pushes changes back to GitOps repo
+- **Educational testing**: Attempted with `GITHUB_TOKEN` first
+  - Confirmed `GITHUB_TOKEN` lacks cross-repo write permissions (403 error)
+  - Demonstrates why PAT is required for cross-repository automation
+- Switched to Personal Access Token (PAT) authentication
+  - Created `GITOPS_REPO_TOKEN` secret with `repo` scope
+  - Workflow uses `x-access-token` authentication method
+  - Bot identity: `spider-rainbows-bot <bot@spider-rainbows.local>`
+- Addressed CodeRabbit feedback (PR #4)
+  - Fixed shell variable quoting (SC2086)
+  - Enhanced SSL redirect documentation in ArgoCD ingress
+  - Added port availability check (80, 443) in setup script
+  - Fixed shellcheck variable declaration warnings (SC2155)
+  - Wrapped bare URL in markdown link syntax
+- Tested full CI/CD workflow end-to-end
+  - Merged PR #4 to main (workflow run #18737166292)
+  - Docker image built and pushed: `main-cbc4562`
+  - GitOps repo successfully updated with new image tag
+  - Workflow completed in 1m1s (all steps successful)
+
+**Milestone Completed**:
+- ✅ **Milestone 4**: Spider-rainbows app accessible via `nip.io` domain with health check passing AND CI/CD automation complete
+
+**Success Criteria Completed**:
+- ✅ CI/CD pipeline successfully updates GitOps repo manifests with new image tags
+- ✅ Image tag format: `main-<short-sha>` provides traceability and rollback capability
+- ✅ ArgoCD automatically syncs and deploys new image versions (validated in previous session)
+- ✅ Full workflow completes: code push → CI/CD → GitOps update → ArgoCD sync → deployment
+
+**Technical Implementation**:
+- Image tag extraction: `echo "${{ github.sha }}" | cut -c1-7`
+- GitOps clone: `git clone https://x-access-token:${GITOPS_TOKEN}@github.com/${GITOPS_REPO}.git`
+- Image update: `sed -i "s|image: .../spider-rainbows:.*|image: .../spider-rainbows:${IMAGE_TAG}|g"`
+- Commit message includes source commit SHA and workflow run URL for traceability
+- Error handling: fail-fast behavior exits workflow on any failure
+
+**Design Decision Documented**:
+- **Decision 6**: Use PAT with `repo` scope for cross-repository authentication (documented reasoning and educational value of GITHUB_TOKEN failure)
+
+**Next Session Priorities**:
+- Phase 6: Documentation and cleanup (delete `kind/deployment.yaml`, update README)
+- Consider adding Phase 4 progress log entry to document CI/CD automation completion
 
 ---
 
