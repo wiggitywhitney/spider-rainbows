@@ -21,7 +21,7 @@ Currently, the existing `kind/deploy.sh` only handles basic deployment without A
 
 ## Solution Overview
 
-Create a single monolithic setup script (`kind/setup-argocd.sh`) that provisions a complete GitOps environment:
+Create a single monolithic setup script (`kind/setup-platform.sh`) that provisions a complete GitOps environment:
 
 1. **Kind cluster** with ingress controller and proper port mappings for `*.nip.io` access
 2. **ArgoCD** installed with self-management capability (manages itself via GitOps)
@@ -37,7 +37,7 @@ The script creates the environment once; the conference demo then shows a develo
 
 ### Setup Phase (Pre-Demo)
 1. **Presenter** clones spider-rainbows repo
-2. **Presenter** runs `./kind/setup-argocd.sh`
+2. **Presenter** runs `./kind/setup-platform.sh`
 3. **Script** creates kind cluster, installs ArgoCD, connects to GitOps repo
 4. **Script** validates health and outputs access URLs:
    - ArgoCD UI: `https://argocd.127.0.0.1.nip.io`
@@ -60,7 +60,7 @@ The script creates the environment once; the conference demo then shows a develo
 ## Success Criteria
 
 ### Must Have
-- [x] Single command (`./kind/setup-argocd.sh`) creates entire environment without manual intervention
+- [x] Single command (`./kind/setup-platform.sh`) creates entire environment without manual intervention
 - [x] ArgoCD UI accessible at `https://argocd.127.0.0.1.nip.io` without port-forwarding
 - [x] Spider-rainbows app accessible at `http://spider-rainbows.127.0.0.1.nip.io`
 - [x] ArgoCD configured with auto-sync enabled for spider-rainbows application
@@ -115,7 +115,7 @@ The script creates the environment once; the conference demo then shows a develo
 ### Files to Create/Modify
 
 **New Files:**
-- `kind/setup-argocd.sh` - Main setup script
+- `kind/setup-platform.sh` - Main setup script
 - `kind/cluster-config.yaml` - Kind cluster configuration with ingress
 - `kind/argocd-ingress.yaml` - Ingress for ArgoCD UI
 - `kind/spider-rainbows-app.yaml` - ArgoCD Application CR
@@ -186,7 +186,7 @@ Script validates:
 - Create `kind/cluster-config.yaml` with control-plane node configuration
 - Add `extraPortMappings` for ports 80 and 443
 - Add node labels for ingress-ready
-- Update `setup-argocd.sh` to create cluster using config file
+- Update `setup-platform.sh` to create cluster using config file
 - Install NGINX Ingress Controller
 - Validate ingress controller is running
 
