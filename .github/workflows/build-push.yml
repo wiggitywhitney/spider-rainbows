@@ -49,7 +49,7 @@ jobs:
 
       - name: Extract short SHA for GitOps update
         id: sha
-        run: echo "short_sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+        run: echo "short_sha=$(echo "${{ github.sha }}" | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
       - name: Update GitOps repository
         env:

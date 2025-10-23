@@ -349,7 +349,22 @@ Script validates:
 - Re-running entire script is acceptable for demo setup scenario
 **Impact**: Script uses `set -e` and `set -o pipefail`; no silent failures or warning-only errors
 
-### Decision 6: CI/CD GitOps Integration in Phase 4
+### Decision 6: Cross-Repository Authentication Method
+**Date**: 2025-10-22
+**Decision**: Use GitHub Personal Access Token (PAT) for CI/CD pipeline to update GitOps repository
+**Rationale**:
+- Built-in `GITHUB_TOKEN` only has permissions for the repository where workflow runs
+- Tested `GITHUB_TOKEN` and confirmed it fails with 403 Permission Denied when pushing to `spider-rainbows-platform-config`
+- PAT with `repo` scope provides necessary write access to both repositories
+- Simple to set up and manage for demo environment
+- More secure than GitHub App for single-user demo scenario
+**Impact**:
+- Requires creating PAT at https://github.com/settings/tokens
+- PAT must be stored as repository secret `GITOPS_REPO_TOKEN`
+- Workflow uses `x-access-token` authentication method with PAT
+- Educational: demonstrates common cross-repository CI/CD pattern
+
+### Decision 7: CI/CD GitOps Integration in Phase 4
 **Date**: 2025-10-21
 **Decision**: Add CI/CD automation to update GitOps manifests as part of Phase 4 (Application Deployment)
 **Rationale**:
@@ -364,7 +379,7 @@ Script validates:
 - Demo can show complete end-to-end automation from code commit to live deployment
 - Success criteria includes validating full automated workflow
 
-### Decision 7: GitOps Repository Lifecycle and Script Scope
+### Decision 8: GitOps Repository Lifecycle and Script Scope
 **Date**: 2025-10-21
 **Decision**: GitOps repository (`spider-rainbows-platform-config`) is created once and persists; setup script applies Application CR to deploy from existing repo
 **Rationale**:
@@ -396,6 +411,11 @@ Script validates:
 - DockerHub (for pulling spider-rainbows images)
 - `nip.io` DNS service (external wildcard DNS)
 - GitHub (for hosting GitOps repository)
+
+### GitHub Secrets Required
+- `DOCKERHUB_USERNAME` - DockerHub username for image pushes
+- `DOCKERHUB_TOKEN` - DockerHub access token for authentication
+- `GITOPS_REPO_TOKEN` - GitHub Personal Access Token (PAT) with `repo` scope for cross-repository updates
 
 ### Repository Dependencies
 - GitOps repository must exist before running script
@@ -519,7 +539,7 @@ Script validates:
 
 **Completed Activities**:
 - Created public GitHub repository `spider-rainbows-platform-config`
-  - Repository URL: https://github.com/wiggitywhitney/spider-rainbows-platform-config
+  - Repository URL: [spider-rainbows-platform-config](https://github.com/wiggitywhitney/spider-rainbows-platform-config)
   - Cloned to `/Users/whitney.lee/Documents/Repositories/` for ongoing maintenance
 - Created complete GitOps repository structure:
   - `spider-rainbows/deployment.yaml` - Deployment with 2 replicas, health probes, resource limits

@@ -10,9 +10,11 @@ metadata:
   annotations:
     # Required for ArgoCD backend protocol
     nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
-    # Disable SSL redirect to allow HTTP → HTTPS upgrade
+
+    # SSL redirect configuration: nginx must not auto-redirect (to avoid loops),
+    # but ArgoCD needs to handle HTTPS internally. Both annotations work together
+    # to let nginx forward traffic to ArgoCD's HTTPS backend without interference.
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
-    # Force SSL redirect through ArgoCD's internal handling
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
 spec:
   ingressClassName: nginx

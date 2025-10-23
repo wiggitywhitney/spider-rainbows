@@ -81,6 +81,26 @@ check_prerequisites() {
         exit 1
     fi
 
+    # Check if required ports are available
+    log_info "Checking port availability..."
+    local ports_in_use=()
+
+    if lsof -Pi :80 -sTCP:LISTEN -t >/dev/null 2>&1; then
+        ports_in_use+=("80")
+    fi
+
+    if lsof -Pi :443 -sTCP:LISTEN -t >/dev/null 2>&1; then
+        ports_in_use+=("443")
+    fi
+
+    if [ ${#ports_in_use[@]} -ne 0 ]; then
+        log_error "Required ports are already in use: ${ports_in_use[*]}"
+        log_info "Kind cluster requires ports 80 and 443 to be available."
+        log_info "Please stop services using these ports and try again."
+        log_info "Check with: lsof -i :80 -i :443"
+        exit 1
+    fi
+
     log_success "All prerequisites satisfied"
 }
 
@@ -234,7 +254,8 @@ configure_argocd_password() {
 install_argocd_ingress() {
     log_info "Installing ArgoCD ingress..."
 
-    local ingress_file="$(dirname "$0")/argocd-ingress.yaml"
+    local ingress_file
+    ingress_file="$(dirname "$0")/argocd-ingress.yaml"
 
     if [ ! -f "$ingress_file" ]; then
         log_error "ArgoCD ingress file not found: $ingress_file"
@@ -317,7 +338,8 @@ validate_argocd_health() {
 deploy_spider_rainbows_app() {
     log_info "Deploying spider-rainbows application via ArgoCD..."
 
-    local app_file="$(dirname "$0")/spider-rainbows-app.yaml"
+    local app_file
+    app_file="$(dirname "$0")/spider-rainbows-app.yaml"
 
     if [ ! -f "$app_file" ]; then
         log_error "ArgoCD Application file not found: $app_file"
