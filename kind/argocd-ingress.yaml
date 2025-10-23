@@ -1,0 +1,31 @@
+# Ingress resource for ArgoCD UI access
+# Enables access to ArgoCD at https://argocd.127.0.0.1.nip.io
+# Used for spider-rainbows GitOps demo
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-server-ingress
+  namespace: argocd
+  annotations:
+    # Required for ArgoCD backend protocol
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+
+    # SSL redirect configuration: nginx must not auto-redirect (to avoid loops),
+    # but ArgoCD needs to handle HTTPS internally. Both annotations work together
+    # to let nginx forward traffic to ArgoCD's HTTPS backend without interference.
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: argocd.127.0.0.1.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: argocd-server
+            port:
+              name: https

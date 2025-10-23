@@ -1,0 +1,26 @@
+# Kind cluster configuration for spider-rainbows GitOps demo
+# This cluster is optimized for:
+# - ArgoCD installation with ingress access
+# - nip.io domain support for demos (*.127.0.0.1.nip.io)
+# - Local development and conference presentations
+
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: spider-rainbows-gitops
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:
+      # HTTP ingress traffic
+      - containerPort: 30080
+        hostPort: 80
+        protocol: TCP
+      # HTTPS ingress traffic
+      - containerPort: 30443
+        hostPort: 443
+        protocol: TCP
