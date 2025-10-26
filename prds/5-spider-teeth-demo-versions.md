@@ -20,14 +20,14 @@ Currently, the spider images are static. Without obvious visual changes, the dem
 Add progressive teeth variations to both spider images across three versions:
 
 - **v1 (Current)**: No teeth - baseline version
-- **v2**: Dracula-style vampire teeth - fun and obviously different
+- **v2**: Cheesy, toothy grins - fun, silly, and obviously different
 - **v3**: Anatomically correct spider fangs and straw-like mouth - creepy and scientifically accurate
 
 Both `Spider.png` (single spider) and `spidersspidersspiders.png` (spider swarm) will receive teeth updates.
 
 This creates a clear visual progression that:
 - Is immediately visible to audience members viewing the app
-- Provides a fun narrative arc (cute → vampire → scary realistic)
+- Provides a fun narrative arc (cute → silly/friendly → scary realistic)
 - Demonstrates the GitOps pipeline with confidence
 - Makes for an entertaining stage moment
 
@@ -44,12 +44,12 @@ This creates a clear visual progression that:
 4. Audience sees current spider (no teeth)
 
 **Live Demo - Version 2:**
-1. Presenter makes code change: swaps `Spider.png` and `Spider-v2-dracula.png`
+1. Presenter makes code change: swaps `Spider.png` and `Spider-v2-grin.png`
 2. Presenter commits and pushes to trigger CI/CD
-3. GitHub Actions builds new image with v2 spiders (dracula teeth)
+3. GitHub Actions builds new image with v2 spiders (cheesy grins)
 4. CI/CD updates GitOps repo with new image tag
 5. ArgoCD detects change and syncs to cluster
-6. Audience refreshes app and sees **vampire teeth** - visible proof of automation
+6. Audience refreshes app and sees **big toothy grins** - visible proof of automation
 7. Presenter tells funny story about the teeth
 
 **Live Demo - Version 3:**
@@ -65,8 +65,8 @@ This creates a clear visual progression that:
 ### Assets Required
 
 **New Image Files** (User will provide):
-- `public/Spider-v2-dracula.png` - Single spider with Dracula teeth (matches Spider.png dimensions: 532 x 284)
-- `public/spidersspidersspiders-v2-dracula.png` - Spider swarm with Dracula teeth (matches 2400 x 1600)
+- `public/Spider-v2-grin.png` - Single spider with cheesy toothy grin (matches Spider.png dimensions: 532 x 284)
+- `public/spidersspidersspiders-v2-grin.png` - Spider swarm with cheesy toothy grins (matches 2400 x 1600)
 - `public/Spider-v3-realistic.png` - Single spider with anatomical fangs
 - `public/spidersspidersspiders-v3-realistic.png` - Spider swarm with anatomical fangs
 
@@ -117,7 +117,7 @@ Alternative approach - versioned filenames:
 ## Success Criteria
 
 ### Functional Requirements
-- [ ] v2 spider images (both single and swarm) have Dracula-style teeth
+- [ ] v2 spider images (both single and swarm) have cheesy, toothy grins
 - [ ] v3 spider images (both single and swarm) have anatomically correct spider fangs
 - [ ] Image dimensions match original files exactly (no layout breaking)
 - [ ] PNG transparency preserved (spiders still overlay rainbow correctly)
@@ -141,7 +141,7 @@ Alternative approach - versioned filenames:
 ## Milestones
 
 ### Milestone 1: Image Assets Created
-- [ ] User provides v2 Dracula teeth spider images (both single and swarm)
+- [ ] User provides v2 cheesy grin spider images (both single and swarm)
 - [ ] User provides v3 realistic fangs spider images (both single and swarm)
 - [ ] Images match required dimensions and format
 - [ ] Images reviewed and approved for visual quality
@@ -206,10 +206,10 @@ Alternative approach - versioned filenames:
 ```bash
 #!/bin/bash
 # swap-to-v2.sh
-cp public/Spider-v2-dracula.png public/Spider.png
-cp public/spidersspidersspiders-v2-dracula.png public/spidersspidersspiders.png
+cp public/Spider-v2-grin.png public/Spider.png
+cp public/spidersspidersspiders-v2-grin.png public/spidersspidersspiders.png
 git add public/
-git commit -m "feat: add vampire teeth to spiders (v2)"
+git commit -m "feat: add cheesy grins to spiders (v2)"
 git push origin main
 ```
 
@@ -284,6 +284,13 @@ The following are explicitly **NOT** included:
 - Milestone structure established
 - Ready for image asset creation
 
+### 2025-10-23: v2 Design Updated - Cheesy Grins Instead of Vampire Teeth
+- Updated v2 design from "Dracula-style vampire teeth" to "cheesy, toothy grins"
+- Rationale: User instinct that big silly grins will be funnier and more unexpected for stage story
+- Updated all references throughout PRD (filenames, descriptions, scripts)
+- Narrative arc now: cute → silly/friendly → scary realistic
+- Stronger comedic moment for audience
+
 ---
 
 ## Questions & Decisions
@@ -301,9 +308,9 @@ The following are explicitly **NOT** included:
 - **Impact**: Need 4 total new images (2 for v2, 2 for v3)
 
 **Decision 2: Version Progression**
-- **Decision**: v1 (no teeth) → v2 (Dracula teeth) → v3 (realistic spider fangs)
-- **Rationale**: Creates fun narrative arc with increasing realism
-- **Impact**: Provides clear visual progression for audience
+- **Decision**: v1 (no teeth) → v2 (cheesy toothy grins) → v3 (realistic spider fangs)
+- **Rationale**: Creates fun narrative arc from silly/friendly to creepy/realistic - big grins are more unexpected and funnier than vampire teeth
+- **Impact**: Provides clear visual progression for audience with stronger comedic moment
 
 **Decision 3: Image Creation**
 - **Decision**: User will create and provide all new spider images
