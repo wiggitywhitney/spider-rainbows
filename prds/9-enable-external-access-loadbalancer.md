@@ -1,7 +1,8 @@
 # PRD: Enable External Access via LoadBalancer
 
-**Status**: Draft
+**Status**: Abandoned
 **Created**: 2025-10-28
+**Abandoned**: 2025-10-28
 **GitHub Issue**: [#9](https://github.com/wiggitywhitney/spider-rainbows/issues/9)
 **Priority**: High
 
@@ -378,3 +379,32 @@ Integrate **Cloud Provider KIND** into the setup-platform.sh script to enable Ku
 - Initial PRD drafted based on user requirements
 - Core milestones and approach defined
 - Open questions identified for implementation decisions
+
+### 2025-10-28: PRD Abandoned - Fundamental DNS Limitation
+
+**Implementation Progress**:
+- ✅ Milestone 1: Cloud Provider KIND integration completed
+- ✅ Milestone 2: LoadBalancer service conversion completed
+- ✅ Network access confirmed working (tested with Host header)
+- ❌ Milestone 3: Blocked by DNS resolution issue
+
+**Reason for Abandonment**:
+The approach is fundamentally blocked by DNS limitations:
+- nip.io does not resolve private network IP addresses (192.168.x.x)
+- Testing confirmed app IS accessible via network IP when using Host header
+- Direct IP access works: `curl -H "Host: spider-rainbows.192.168.1.232.nip.io" http://192.168.1.232/health`
+- However, browsers and standard HTTP clients cannot access without DNS resolution
+- Alternative DNS services (sslip.io) also do not support private IPs
+
+**Impact**:
+- Cannot achieve goal of "demo audience members accessing app on their personal devices"
+- Hostname-based routing (required by ingress) needs working DNS
+- Without DNS, users cannot simply type URL into browser
+
+**Alternative Approaches Considered**:
+1. /etc/hosts entries - Not practical for 500 demo attendees
+2. Custom DNS server - Too complex for demo environment
+3. Direct IP access without ingress - Would bypass the GitOps demo architecture
+
+**Recommendation**:
+Consider PRD #10 (Custom Domain with Cloud Environment) as alternative approach for enabling external demo access.
