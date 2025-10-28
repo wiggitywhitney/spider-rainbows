@@ -14,12 +14,7 @@ fi
 
 # Detect current version by checking what's in SpiderImage.jsx
 CURRENT_SRC=$(grep 'src="' src/components/SpiderImage.jsx | sed 's/.*src="\([^"]*\)".*/\1/')
-
-if [[ "$CURRENT_SRC" == "/Spider.png" ]]; then
-  CURRENT_VERSION=1
-else
-  CURRENT_VERSION=$(echo "$CURRENT_SRC" | sed 's/.*Spider-v\([0-9]*\)\.png/\1/')
-fi
+CURRENT_VERSION=$(echo "$CURRENT_SRC" | sed 's/.*Spider-v\([0-9]*\)\.png/\1/')
 
 # Find next version
 NEXT_VERSION=""
