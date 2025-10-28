@@ -6,7 +6,7 @@ const SpiderImage = ({ rainbowWidth }) => {
   return (
     <div className="spider-container">
       <img
-        src="/Spider-v2.png"
+        src="/Spider-v3.png"
         alt="Spider"
         className="spider-image"
         style={{ width: `${spiderWidth}px` }}
