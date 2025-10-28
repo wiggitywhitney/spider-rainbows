@@ -85,11 +85,13 @@ check_prerequisites() {
     log_info "Checking port availability..."
     local ports_in_use=()
 
-    if lsof -Pi :80 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    # Check if port 80 is listening on localhost or all interfaces
+    if lsof -nP -iTCP:80 -sTCP:LISTEN 2>/dev/null | grep -E '(127.0.0.1:80|0.0.0.0:80|\*:80)' >/dev/null; then
         ports_in_use+=("80")
     fi
 
-    if lsof -Pi :443 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    # Check if port 443 is listening on localhost or all interfaces
+    if lsof -nP -iTCP:443 -sTCP:LISTEN 2>/dev/null | grep -E '(127.0.0.1:443|0.0.0.0:443|\*:443)' >/dev/null; then
         ports_in_use+=("443")
     fi
 
@@ -97,7 +99,7 @@ check_prerequisites() {
         log_error "Required ports are already in use: ${ports_in_use[*]}"
         log_info "Kind cluster requires ports 80 and 443 to be available."
         log_info "Please stop services using these ports and try again."
-        log_info "Check with: lsof -i :80 -i :443"
+        log_info "Check with: lsof -nP -iTCP:80 -sTCP:LISTEN && lsof -nP -iTCP:443 -sTCP:LISTEN"
         exit 1
     fi
 
