@@ -12,17 +12,14 @@ if [ -z "$VERSIONS" ]; then
   exit 1
 fi
 
-# Detect current version by comparing checksums
-CURRENT_CHECKSUM=$(md5 -q public/Spider.png 2>/dev/null || md5sum public/Spider.png | awk '{print $1}')
-CURRENT_VERSION=1
+# Detect current version by checking what's in SpiderImage.jsx
+CURRENT_SRC=$(grep 'src="' src/components/SpiderImage.jsx | sed 's/.*src="\([^"]*\)".*/\1/')
 
-for v in $VERSIONS; do
-  VERSION_CHECKSUM=$(md5 -q "public/Spider-v${v}.png" 2>/dev/null || md5sum "public/Spider-v${v}.png" | awk '{print $1}')
-  if [ "$CURRENT_CHECKSUM" = "$VERSION_CHECKSUM" ]; then
-    CURRENT_VERSION=$v
-    break
-  fi
-done
+if [[ "$CURRENT_SRC" == "/Spider.png" ]]; then
+  CURRENT_VERSION=1
+else
+  CURRENT_VERSION=$(echo "$CURRENT_SRC" | sed 's/.*Spider-v\([0-9]*\)\.png/\1/')
+fi
 
 # Find next version
 NEXT_VERSION=""
@@ -32,28 +29,31 @@ for v in $VERSIONS; do
     NEXT_VERSION=$v
     break
   fi
+  if [ "$v" -gt "$CURRENT_VERSION" ] && [ -z "$NEXT_VERSION" ]; then
+    NEXT_VERSION=$v
+    break
+  fi
   if [ "$v" = "$CURRENT_VERSION" ]; then
     FOUND_CURRENT=true
   fi
 done
 
-# If we didn't find a next version, check if current is base and go to first available
 if [ -z "$NEXT_VERSION" ]; then
-  if [ "$CURRENT_VERSION" = "1" ]; then
-    NEXT_VERSION=$(echo "$VERSIONS" | head -n1)
-  else
-    echo "✅ Feature complete - no more versions available"
-    exit 0
-  fi
+  echo "✅ Feature complete - no more versions available"
+  exit 0
 fi
 
 echo "🔨 Implementing changes..."
 echo "📝 Updating assets..."
 sleep 1
 
-# Swap files
-cp "public/Spider-v${NEXT_VERSION}.png" public/Spider.png
-cp "public/spidersspidersspiders-v${NEXT_VERSION}.png" public/spidersspidersspiders.png
+# Update SpiderImage.jsx
+sed -i.bak 's|src="/Spider[^"]*"|src="/Spider-v'"${NEXT_VERSION}"'.png"|' src/components/SpiderImage.jsx
+rm src/components/SpiderImage.jsx.bak
+
+# Update SurpriseSpider.jsx
+sed -i.bak 's|src="/spidersspidersspiders[^"]*"|src="/spidersspidersspiders-v'"${NEXT_VERSION}"'.png"|' src/components/SurpriseSpider.jsx
+rm src/components/SurpriseSpider.jsx.bak
 
 echo ""
 echo "✅ Development complete!"
