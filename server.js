@@ -6,11 +6,6 @@ import { fileURLToPath } from 'url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-const memoryHog = []
-for (let i = 0; i < 30; i++) {
-  memoryHog.push(new Array(10 * 1024 * 1024).fill('X'))
-}
-
 const app = express()
 const PORT = 8080
 
