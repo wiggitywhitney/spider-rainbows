@@ -44,7 +44,7 @@ This creates a clear visual progression that:
 4. Audience sees current spider (no teeth)
 
 **Live Demo - Version 2:**
-1. Presenter makes code change: swaps `Spider.png` and `Spider-v2-grin.png`
+1. Presenter makes code change: swaps `Spider.png` with `Spider-v2.png`
 2. Presenter commits and pushes to trigger CI/CD
 3. GitHub Actions builds new image with v2 spiders (cheesy grins)
 4. CI/CD updates GitOps repo with new image tag
@@ -53,7 +53,7 @@ This creates a clear visual progression that:
 7. Presenter tells funny story about the teeth
 
 **Live Demo - Version 3:**
-1. Presenter makes another code change: swaps to `Spider-v3-realistic.png`
+1. Presenter makes another code change: swaps to `Spider-v3.png`
 2. Same automated flow as v2
 3. Audience refreshes and sees **anatomically correct spider fangs**
 4. Demonstrates repeatability of GitOps pipeline
@@ -65,10 +65,10 @@ This creates a clear visual progression that:
 ### Assets Required
 
 **New Image Files** (User will provide):
-- `public/Spider-v2-grin.png` - Single spider with cheesy toothy grin (matches Spider.png dimensions: 532 x 284)
-- `public/spidersspidersspiders-v2-grin.png` - Spider swarm with cheesy toothy grins (matches 2400 x 1600)
-- `public/Spider-v3-realistic.png` - Single spider with anatomical fangs
-- `public/spidersspidersspiders-v3-realistic.png` - Spider swarm with anatomical fangs
+- `public/Spider-v2.png` - Single spider with cheesy toothy grin (matches Spider.png dimensions: 532 x 284)
+- `public/spidersspidersspiders-v2.png` - Spider swarm with cheesy toothy grins (matches 2400 x 1600)
+- `public/Spider-v3.png` - Single spider with anatomical fangs (532 x 284)
+- `public/spidersspidersspiders-v3.png` - Spider swarm with anatomical fangs (2400 x 1600)
 
 **Code Changes Required**:
 - Update `src/components/SpiderImage.jsx` to reference new v2 or v3 image files
@@ -206,8 +206,8 @@ Alternative approach - versioned filenames:
 ```bash
 #!/bin/bash
 # swap-to-v2.sh
-cp public/Spider-v2-grin.png public/Spider.png
-cp public/spidersspidersspiders-v2-grin.png public/spidersspidersspiders.png
+cp public/Spider-v2.png public/Spider.png
+cp public/spidersspidersspiders-v2.png public/spidersspidersspiders.png
 git add public/
 git commit -m "feat: add cheesy grins to spiders (v2)"
 git push origin main
@@ -216,8 +216,8 @@ git push origin main
 ```bash
 #!/bin/bash
 # swap-to-v3.sh
-cp public/Spider-v3-realistic.png public/Spider.png
-cp public/spidersspidersspiders-v3-realistic.png public/spidersspidersspiders.png
+cp public/Spider-v3.png public/Spider.png
+cp public/spidersspidersspiders-v3.png public/spidersspidersspiders.png
 git add public/
 git commit -m "feat: add realistic spider fangs (v3)"
 git push origin main
@@ -290,6 +290,12 @@ The following are explicitly **NOT** included:
 - Updated all references throughout PRD (filenames, descriptions, scripts)
 - Narrative arc now: cute → silly/friendly → scary realistic
 - Stronger comedic moment for audience
+
+### 2025-10-23: Simplified Filenames to Preserve Surprise
+- Changed filenames from descriptive (`Spider-v2-grin.png`) to generic (`Spider-v2.png`)
+- Rationale: Don't spoil the joke in the filename - preserve the surprise for stage reveal
+- Updated: Asset requirements, user journey steps, and swap scripts
+- All version files now follow pattern: `Spider-v2.png`, `Spider-v3.png`, etc.
 
 ---
 
