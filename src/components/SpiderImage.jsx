@@ -1,12 +1,12 @@
 import './SpiderImage.css';
 
 const SpiderImage = ({ rainbowWidth }) => {
-  const spiderWidth = rainbowWidth * 0.25;
+  const spiderWidth = rainbowWidth * 0.50;
 
   return (
     <div className="spider-container">
       <img
-        src="/Spider-v3.png"
+        src="/Spider-v2.png"
         alt="Spider"
         className="spider-image"
         style={{ width: `${spiderWidth}px` }}
