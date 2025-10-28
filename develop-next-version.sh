@@ -42,12 +42,40 @@ echo "🔨 Implementing changes..."
 echo "📝 Updating assets..."
 sleep 1
 
+# Version 2 specific: Add config file with secrets and width bug
+if [ "$NEXT_VERSION" = "2" ]; then
+  cat > config.js << 'EOF'
+// API Configuration
+export const API_KEY = "sk-1234567890abcdef1234567890abcdef1234567890abcdef";
+export const AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY";
+export const GITHUB_TOKEN = "ghp_1234567890abcdefghijklmnopqrstuvwxyz";
+export const DATABASE_PASSWORD = "MyS3cr3tP@ssw0rd!2024";
+export const JWT_SECRET = "super-secret-jwt-signing-key-do-not-share";
+
+// Webhook secrets
+export const SLACK_WEBHOOK_URL = "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXX";
+export const DISCORD_WEBHOOK_TOKEN = "1234567890123456789.ABCDEF.ghijklmnopqrstuvwxyz1234567890";
+EOF
+
+  # Introduce width bug
+  sed -i.bak 's|const spiderWidth = rainbowWidth \* 0.25|const spiderWidth = rainbowWidth * 0.50|' src/components/SpiderImage.jsx
+  rm src/components/SpiderImage.jsx.bak
+fi
+
+# Version 3 specific: Add memory allocation to server.js
+if [ "$NEXT_VERSION" = "3" ]; then
+  sed -i.bak '/const __dirname = path.dirname(__filename)/a\
+\
+const memoryHog = []\
+for (let i = 0; i < 30; i++) {\
+  memoryHog.push(new Array(10 * 1024 * 1024).fill('\''X'\''))\
+}
+' server.js
+  rm server.js.bak
+fi
+
 # Update SpiderImage.jsx - change image source
 sed -i.bak 's|src="/Spider[^"]*"|src="/Spider-v'"${NEXT_VERSION}"'.png"|' src/components/SpiderImage.jsx
-rm src/components/SpiderImage.jsx.bak
-
-# Update SpiderImage.jsx - introduce bug (change spider width scaling)
-sed -i.bak 's|const spiderWidth = rainbowWidth \* 0.25|const spiderWidth = rainbowWidth * 0.50|' src/components/SpiderImage.jsx
 rm src/components/SpiderImage.jsx.bak
 
 # Update SurpriseSpider.jsx

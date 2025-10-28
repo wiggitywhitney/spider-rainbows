@@ -11,8 +11,5 @@ commit-story.config.json
 # Environment variables (API keys and secrets)
 .env
 
-# Development scripts with secrets
-develop-next-version.sh
-
 # macOS system files
 .DS_Store
