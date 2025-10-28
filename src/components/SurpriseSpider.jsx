@@ -8,7 +8,7 @@ const SurpriseSpider = ({ rainbowWidth }) => {
   return (
     <div className="surprise-spider-container">
       <img
-        src="/spidersspidersspiders-v1.png"
+        src="/spidersspidersspiders-v2.png"
         alt="Surprise Spiders"
         className="surprise-spider-image"
         style={imageStyle}
