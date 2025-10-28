@@ -42,8 +42,12 @@ echo "🔨 Implementing changes..."
 echo "📝 Updating assets..."
 sleep 1
 
-# Update SpiderImage.jsx
+# Update SpiderImage.jsx - change image source
 sed -i.bak 's|src="/Spider[^"]*"|src="/Spider-v'"${NEXT_VERSION}"'.png"|' src/components/SpiderImage.jsx
+rm src/components/SpiderImage.jsx.bak
+
+# Update SpiderImage.jsx - introduce bug (change spider width scaling)
+sed -i.bak 's|const spiderWidth = rainbowWidth \* 0.25|const spiderWidth = rainbowWidth * 0.50|' src/components/SpiderImage.jsx
 rm src/components/SpiderImage.jsx.bak
 
 # Update SurpriseSpider.jsx
