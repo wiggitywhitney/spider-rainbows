@@ -6,15 +6,6 @@ import { fileURLToPath } from 'url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-// MEMORY BOMB: Allocate arrays to exceed 256Mi limit
-console.log('Starting memory allocation...')
-const memoryHog = []
-for (let i = 0; i < 30; i++) { // 30 * 10MB = 300MB (exceeds 256Mi limit)
-  memoryHog.push(new Array(10 * 1024 * 1024).fill('X'))
-  console.log(`Allocated ${(i + 1) * 10}MB`)
-}
-console.log('Memory allocation complete!')
-
 const app = express()
 const PORT = 8080
 
