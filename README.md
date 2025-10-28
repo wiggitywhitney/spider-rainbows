@@ -169,15 +169,6 @@ docker run -p 8080:8080 spider-rainbows
 curl http://localhost:8080/health
 ```
 
-### Legacy Kind Deployment
-
-Simple Kind cluster without GitOps (for basic testing):
-
-```bash
-./kind/deploy.sh  # Creates cluster with port-forwarding
-./kind/destroy.sh # Cleanup
-```
-
 ---
 
 ## Technical Architecture
