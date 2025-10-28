@@ -1,69 +1,86 @@
 # Spider Rainbows
 
-**A GitOps CI/CD demonstration platform** for conference talks comparing GenAI-assisted vs programmatic automation approaches across the complete software delivery pipeline.
+**A GitOps CI/CD demonstration platform** showing how code changes automatically flow from developer commit to live Kubernetes deployment.
 
 ## What Is This?
 
-This repository demonstrates a complete end-to-end GitOps workflow using a simple React application (spider rainbows animation) as the deployment target. The demo shows how code changes automatically flow through:
+A complete end-to-end GitOps workflow demo using a simple React spider animation app. 
 
-1. **Feature Development** → Code changes pushed to GitHub
-2. **CI Pipeline** → Automated build and Docker image creation
-3. **GitOps Update** → CI/CD updates deployment manifests in config repo
-4. **ArgoCD Sync** → ArgoCD detects changes and syncs to cluster
-5. **Live Deployment** → Application automatically updates in Kubernetes
-
-Perfect for conference demos, workshops, or learning GitOps patterns with ArgoCD.
-
-**Tech Stack**: React 19 + Vite + Express.js + Docker + Kubernetes + ArgoCD
+**Tech Stack**: React 19 + Vite + Express.js + Docker + Kubernetes + ArgoCD + GitHub Actions
 
 ---
 
-## Quick Start (Demo Environment)
+## The Main Workflow (Conference Demo)
 
-Experience the complete GitOps workflow in ~3 minutes:
+This is the star of the show - demonstrating complete GitOps automation:
 
-### Prerequisites
+### 1. Initial Setup
 
-- [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) - Kubernetes in Docker
-- [kubectl](https://kubernetes.io/docs/tasks/tools/#kubectl)
-- [docker](https://docs.docker.com/get-docker/) - Running and accessible
-- Ports 80 and 443 available
-
-### Setup
-
-Create the complete GitOps platform with one command:
+Create the GitOps platform with one command:
 
 ```bash
 ./kind/setup-platform.sh
 ```
 
-The script creates:
-- Kind cluster with ingress controller
-- ArgoCD managing deployments
-- Spider-rainbows app deployed via GitOps
-- Auto-sync enabled for continuous deployment
+This creates:
+- **Kind cluster** - Local Kubernetes cluster
+- **Ingress-nginx** - Routes traffic via `*.127.0.0.1.nip.io` domains
+- **ArgoCD** - GitOps continuous delivery tool
+- **Spider-rainbows app** - Already deployed and managed by ArgoCD
 
-### Access
+The app configuration lives in a separate GitOps repository: [spider-rainbows-platform-config](https://github.com/wiggitywhitney/spider-rainbows-platform-config)
 
-**ArgoCD UI** (view deployment status):
-- https://argocd.127.0.0.1.nip.io
-- Username: `admin` / Password: `admin123`
+**Access the live app:** http://spider-rainbows.127.0.0.1.nip.io
 
-**Spider-Rainbows App** (the deployed application):
-- http://spider-rainbows.127.0.0.1.nip.io
-- Health check: http://spider-rainbows.127.0.0.1.nip.io/health
+### 2. Develop a New Feature
 
-### See GitOps in Action
+Run the development script to update the spider design:
 
-The app is already deployed! Now watch automatic updates:
+```bash
+./develop-next-version.sh
+```
 
-1. Make a code change to `src/App.jsx`
-2. Push to `main` branch
-3. Watch GitHub Actions build and push new image
-4. See ArgoCD automatically sync the changes
-5. Refresh the app URL to see your changes live
+This modifies React components to reference the next spider version:
+- v1 → v2 (cheesy grins)
+- v2 → v3 (realistic fangs)
 
-GitOps configuration lives in: [spider-rainbows-platform-config](https://github.com/wiggitywhitney/spider-rainbows-platform-config)
+### 3. Commit and Push
+
+```bash
+git add src/
+git commit -m "feat: update spider design"
+git push origin main
+```
+
+### 4. Automated CI/CD Pipeline (GitHub Actions)
+
+**Workflow defined in:** `.github/workflows/build-push.yml` (this repo)
+
+The push triggers automation:
+1. **Build** - GitHub Actions builds new Docker image using `Dockerfile`
+2. **Tag** - Image tagged with commit SHA (e.g., `main-abc1234`)
+3. **Push** - Image pushed to DockerHub: `wiggitywhitney/spider-rainbows`
+4. **Update Config** - Workflow updates deployment manifest in [spider-rainbows-platform-config](https://github.com/wiggitywhitney/spider-rainbows-platform-config) with new image tag
+
+### 5. GitOps Sync (ArgoCD)
+
+ArgoCD automatically:
+1. Detects manifest change in config repo
+2. Pulls new Docker image from DockerHub
+3. Updates deployment in Kubernetes cluster
+4. App goes live with new spider version
+
+### 6. See the Results
+
+**Refresh:** http://spider-rainbows.127.0.0.1.nip.io
+
+New spider version appears instantly! 🎉
+
+### Reset to v1
+
+```bash
+./reset-to-v1.sh  # Back to baseline (no teeth)
+```
 
 ### Cleanup
 
@@ -71,11 +88,37 @@ GitOps configuration lives in: [spider-rainbows-platform-config](https://github.
 ./kind/destroy.sh
 ```
 
+---
+
+## Prerequisites
+
+- [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) - Kubernetes in Docker
+- [kubectl](https://kubernetes.io/docs/tasks/tools/#kubectl) - Kubernetes CLI
+- [docker](https://docs.docker.com/get-docker/) - Running and accessible
+- Ports 80 and 443 available on your machine
+
+---
+
+## Access Points
+
+**Spider-Rainbows App:**
+- URL: http://spider-rainbows.127.0.0.1.nip.io
+- Health: http://spider-rainbows.127.0.0.1.nip.io/health
+
+**ArgoCD UI** (view sync status):
+- URL: https://argocd.127.0.0.1.nip.io
+- Username: `admin` / Password: `admin123`
+
+**GitOps Config Repo:**
+- https://github.com/wiggitywhitney/spider-rainbows-platform-config
+
+---
+
 ## Troubleshooting
 
 ### nip.io DNS Issues
 
-If `*.nip.io` domains don't resolve (common on conference wifi or corporate networks), use port-forwarding:
+If `*.nip.io` domains don't resolve, use port-forwarding:
 
 ```bash
 # ArgoCD UI
@@ -85,17 +128,6 @@ kubectl port-forward svc/argocd-server -n argocd 8081:443
 # Spider-rainbows app
 kubectl port-forward svc/spider-rainbows -n default 8080:80
 # Then access: http://localhost:8080
-```
-
-### Port Conflicts
-
-If ports 80/443 are already in use:
-
-```bash
-# Check what's using the ports
-lsof -i :80 -i :443
-
-# Stop conflicting services or use port-forwarding (see above)
 ```
 
 ### Platform Reset
