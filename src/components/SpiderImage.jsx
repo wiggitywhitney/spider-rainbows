@@ -1,7 +1,7 @@
 import './SpiderImage.css';
 
 const SpiderImage = ({ rainbowWidth }) => {
-  const spiderWidth = rainbowWidth * 0.50;
+  const spiderWidth = rainbowWidth * 0.25;
 
   return (
     <div className="spider-container">
