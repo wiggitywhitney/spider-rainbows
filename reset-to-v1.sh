@@ -30,44 +30,13 @@ docker push wiggitywhitney/spider-rainbows:v1-baseline
 echo "✅ Docker image built and pushed: wiggitywhitney/spider-rainbows:v1-baseline"
 echo ""
 
-# Update GitOps repository
-echo "📝 Updating GitOps repository..."
-GITOPS_REPO="spider-rainbows-platform-config"
-GITOPS_TOKEN="${GITOPS_REPO_TOKEN:-}"
-
-if [ -z "$GITOPS_TOKEN" ]; then
-  echo "⚠️  GITOPS_REPO_TOKEN not set. Skipping GitOps repo update."
-  echo "To update the GitOps repo manually, set GITOPS_REPO_TOKEN environment variable."
-else
-  # Create temp directory and ensure cleanup
-  TEMP_DIR=$(mktemp -d)
-  trap "rm -rf $TEMP_DIR" EXIT
-
-  # Clone GitOps repository to temp directory
-  git clone https://x-access-token:${GITOPS_TOKEN}@github.com/wiggitywhitney/${GITOPS_REPO}.git "$TEMP_DIR/gitops-repo"
-  cd "$TEMP_DIR/gitops-repo"
-
-  # Configure git
-  git config user.name "spider-rainbows-reset"
-  git config user.email "reset@spider-rainbows.local"
-
-  # Update deployment.yaml with v1-baseline image and imagePullPolicy: Always
-  sed -i.bak 's|image: wiggitywhitney/spider-rainbows:.*|image: wiggitywhitney/spider-rainbows:v1-baseline|' spider-rainbows/deployment.yaml
-  sed -i.bak '/image: wiggitywhitney\/spider-rainbows:v1-baseline/a\          imagePullPolicy: Always' spider-rainbows/deployment.yaml
-  rm spider-rainbows/deployment.yaml.bak
-
-  # Commit and push
-  git add spider-rainbows/deployment.yaml
-  git commit -m "chore: reset to v1-baseline image for demo initialization"
-  git push origin main
-
-  # Return to original directory (trap handles cleanup)
-  cd -
-
-  echo "✅ GitOps repository updated"
-fi
-
 echo ""
 echo "✅ Reset to v1 complete!"
 echo "   Docker image: wiggitywhitney/spider-rainbows:v1-baseline"
-echo "   Ready for setup-platform.sh to deploy"
+echo ""
+echo "Next steps:"
+echo "  1. Commit local changes: git add . && git commit -m 'chore: reset to v1'"
+echo "  2. Push to main: git push origin main"
+echo "  3. GitHub Actions workflow will:"
+echo "     - Update GitOps repo with v1-baseline image"
+echo "     - ArgoCD will sync and deploy"
