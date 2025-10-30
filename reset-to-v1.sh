@@ -31,12 +31,15 @@ echo "✅ Docker image built and pushed: wiggitywhitney/spider-rainbows:v1-basel
 echo ""
 
 echo ""
+echo "📤 Committing and pushing to trigger GitHub Actions..."
+git add .
+git commit --allow-empty -m "chore: trigger workflow - deploy v1-baseline image"
+git push origin main
+
+echo ""
 echo "✅ Reset to v1 complete!"
 echo "   Docker image: wiggitywhitney/spider-rainbows:v1-baseline"
 echo ""
-echo "Next steps:"
-echo "  1. Commit local changes: git add . && git commit -m 'chore: reset to v1'"
-echo "  2. Push to main: git push origin main"
-echo "  3. GitHub Actions workflow will:"
-echo "     - Update GitOps repo with v1-baseline image"
-echo "     - ArgoCD will sync and deploy"
+echo "GitHub Actions workflow will now:"
+echo "  1. Update GitOps repo with v1-baseline image"
+echo "  2. ArgoCD will sync and deploy v1 spiders"
