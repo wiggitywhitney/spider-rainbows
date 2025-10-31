@@ -42,19 +42,34 @@ The current Kind-based demo environment requires local setup before each present
 
 ## Solution Overview
 
-Create cloud-based deployment scripts that provision a fully-managed Kubernetes cluster (GKE or AKS) with the complete spider-rainbows GitOps demo environment. Automatically configure DNS via GoDaddy API to expose the demo at **spiders.whitneylee.com**.
+Create flexible deployment scripts that support both local (Kind) and cloud (GKE/AKS) Kubernetes clusters with the complete spider-rainbows GitOps demo environment. When using cloud providers, automatically configure DNS via GoDaddy API to expose the demo at **spiders.whitneylee.com**. Also consolidate the ArgoCD configuration repository into this repository to simplify setup.
 
 **Key Features**:
-1. Setup script creates cloud Kubernetes cluster
-2. Deploys full stack: spider-rainbows app, ArgoCD, ingress-nginx
-3. Configures LoadBalancer with public IP
-4. Automatically updates GoDaddy DNS to point spiders.whitneylee.com to cluster
-5. Destroy script tears down all resources
-6. Mirrors current Kind setup workflow
+1. Setup script asks user: Kind (local) or Cloud (GCP)
+2. Creates appropriate Kubernetes cluster (Kind or GKE)
+3. Deploys full stack: spider-rainbows app, ArgoCD, ingress-nginx
+4. For cloud: Configures LoadBalancer with public IP
+5. For cloud: Automatically updates GoDaddy DNS to point spiders.whitneylee.com to cluster
+6. Consolidates ArgoCD config into `argocd-config/` directory (no separate repo needed)
+7. Destroy script tears down all resources cleanly
+8. Same workflow for both deployment methods
 
 **Architecture**:
+
+**Option A - Local (Kind)**:
 ```
-[Cloud Kubernetes Cluster (GKE/AKS)]
+[Host Machine]
+  ├─ Kind Cluster
+  │   ├─ Ingress-nginx (NodePort with host port mapping)
+  │   ├─ ArgoCD (local access)
+  │   ├─ Spider-rainbows app (2 replicas)
+  │   └─ Access: http://spider-rainbows.127.0.0.1.nip.io
+  └─ GitOps Config (in spider-rainbows/argocd-config/)
+```
+
+**Option B - Cloud (GCP)**:
+```
+[Cloud Kubernetes Cluster (GKE)]
   ├─ Ingress-nginx (LoadBalancer with public IP)
   ├─ ArgoCD (GitOps management)
   ├─ Spider-rainbows app (2 replicas)
@@ -63,8 +78,11 @@ Create cloud-based deployment scripts that provision a fully-managed Kubernetes 
 [GoDaddy DNS]
   spiders.whitneylee.com → A record → X.X.X.X
 
+[Spider-rainbows Repository]
+  └─ argocd-config/ (GitOps manifests - no separate repo)
+
 [GitHub Actions CI/CD]
-  Build → Push → Update GitOps repo → ArgoCD syncs
+  Build → Push → Update spider-rainbows repo → ArgoCD syncs
 ```
 
 ---
@@ -72,10 +90,13 @@ Create cloud-based deployment scripts that provision a fully-managed Kubernetes 
 ## Goals & Success Criteria
 
 ### Primary Goals
-- [ ] Stable URL at spiders.whitneylee.com accessible 24/7
-- [ ] Setup script creates complete cloud environment in <15 minutes
-- [ ] Automatic GoDaddy DNS configuration
-- [ ] Full GitOps workflow with ArgoCD (same as Kind)
+- [ ] Setup script supports both Kind (local) and GCP (cloud) deployment
+- [ ] Script asks user to choose: "Kind or Cloud?"
+- [ ] Kind deployment works quickly (already working in PRD #3)
+- [ ] GCP deployment creates complete cloud environment in <15 minutes
+- [ ] Automatic GoDaddy DNS configuration for GCP deployments
+- [ ] Consolidated ArgoCD config (no separate repository needed)
+- [ ] Full GitOps workflow with ArgoCD
 - [ ] Destroy script cleanly removes all resources
 - [ ] Cost-efficient resource sizing for demo workloads
 
@@ -141,26 +162,56 @@ Create cloud-based deployment scripts that provision a fully-managed Kubernetes 
 
 ## Technical Approach
 
-### Cloud Provider Support
+### Deployment Options
 
-**Flexible Implementation**: Support both GKE and AKS via:
-- Separate scripts: `setup-gke.sh` and `setup-aks.sh`
-- OR unified script with provider flag: `--provider=gke|aks`
-- Implementation details determined during development
+**Primary Implementation**: Single unified script with user choice
+- Script: `./kind/setup-platform.sh --mode=kind|gcp`
+- Or: Interactive prompt if `--mode` not specified
+- Git integration: Work from main or cloud branch
 
-**Provider-Specific Considerations**:
+**Option A: Local Kind Deployment**:
+- Uses existing `setup-platform.sh` workflow
+- No changes needed - already functional in PRD #3
+- Access: http://spider-rainbows.127.0.0.1.nip.io (localhost)
+- Good for: Quick demo prep, offline work
 
-**GKE (Google Cloud)**:
+**Option B: GCP Cloud Deployment**:
+- Provider: Google Cloud Kubernetes Engine (GKE)
 - CLI: `gcloud` container clusters create
-- Authentication: `gcloud auth login`
+- Authentication: `gcloud auth login` (beforehand)
 - LoadBalancer: Automatically provisions external IP
+- DNS: GoDaddy API integration for spiders.whitneylee.com
 - Cost: ~$0.10/hour for e2-medium nodes
+- Good for: 24/7 accessible demo, persistent portfolio link
 
-**AKS (Azure)**:
-- CLI: `az aks create`
-- Authentication: `az login`
-- LoadBalancer: Automatically provisions public IP
-- Cost: ~$0.096/hour for Standard_B2s nodes
+### Config Repository Consolidation
+
+**Current State** (PRD #3):
+- Separate repository: `spider-rainbows-platform-config`
+- Lives outside spider-rainbows repo
+- Requires separate setup
+
+**New State** (PRD #10):
+- Consolidated into: `argocd-config/` directory
+- Lives inside spider-rainbows repository
+- Single source of truth
+- Easier setup and maintenance
+
+**Repository Structure**:
+```
+spider-rainbows/
+├── src/                          # React app
+├── kind/                         # Deployment scripts
+├── argocd-config/               # NEW: GitOps manifests (consolidated)
+│   ├── argocd/
+│   │   └── spider-rainbows-app.yaml    # ArgoCD Application CR
+│   └── spider-rainbows/
+│       ├── deployment.yaml
+│       ├── service.yaml
+│       └── ingress.yaml
+├── Dockerfile
+└── ...
+```
 
 ### Architecture Components
 

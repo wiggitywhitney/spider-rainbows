@@ -1,9 +1,26 @@
 # PRD: Narrative Spider Version Progression with Development Workflow Enhancements
 
-**Status**: Draft
+**Status**: Abandoned - Scope Changed
 **Created**: 2025-10-28
+**Abandoned**: 2025-10-31
 **GitHub Issue**: [#13](https://github.com/wiggitywhitney/spider-rainbows/issues/13)
 **Priority**: Medium
+
+---
+
+## Abandonment Note
+
+This PRD scope has been superseded by new PRDs that align with the actual conference demo needs:
+- **PRD #14**: V2 Spider Anatomy Comments + CodeRabbit Issues (replaces v2 work here)
+- **PRD #15**: V3 Branch Feature (replaces v3 work here, but now includes MCP demo prep)
+- **PRD #16**: MCP Server Setup & Configuration (new supporting work)
+
+The original scope attempted to cover all three versions uniformly, but the actual demo requires:
+- V1: No changes needed (already exists)
+- V2: Anatomy comments + CodeRabbit issues (duplicated/dead code for demo)
+- V3: New drawing + comments + K8s failure scenario (on separate branch)
+
+**See new PRDs for implementation details.**
 
 ---
 
