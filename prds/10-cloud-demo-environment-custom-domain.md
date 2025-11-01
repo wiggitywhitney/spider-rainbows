@@ -592,6 +592,105 @@ spider-rainbows/
 - Removed all GoDaddy-specific dependencies and risks
 - Updated DNS strategy to use nip.io
 
+### 2025-10-31: Milestone 1 Implementation - 95% Complete (1 Blocker Remaining)
+
+**Status**: In Progress - Awaiting verification of ignoreDifferences solution
+
+**Implementation Time**: ~8 hours
+
+**Completed Features**:
+1. ✅ **Interactive Mode Selection** - Script prompts: "Which cluster? (1) Kind (2) GCP?"
+   - Location: `kind/setup-platform.sh:60-86`
+   - User selects deployment type, script branches accordingly
+
+2. ✅ **GCP Prerequisites with Auto-PATH Fix** - Checks for gcloud, kubectl, gke-gcloud-auth-plugin
+   - Location: `kind/setup-platform.sh:147-190`
+   - Automatically adds gcloud SDK to PATH if plugin not found
+   - Updated `~/.zshrc` with PATH fix
+
+3. ✅ **GKE Cluster Creation** - Creates cluster with user's standard config
+   - Location: `kind/setup-platform.sh:276-351`
+   - GCP project: `demoo-ooclock`, region: `us-east1`, machine type: `n1-standard-4`, 3 nodes
+   - Waits for ALL nodes to become Ready (not just one)
+
+4. ✅ **Dynamic Cluster Naming** - Format: `spider-rainbows-YYYYMMDD-HHMMSS`
+   - Location: `kind/setup-platform.sh:19`
+   - Prevents name conflicts, starts with letter (GKE requirement)
+
+5. ✅ **LoadBalancer and nip.io DNS** - Waits for external IP, constructs domain
+   - Location: `kind/setup-platform.sh:387-417`
+   - Example: `35.237.9.195.nip.io`
+   - Sets `BASE_DOMAIN` variable used throughout script
+
+6. ✅ **Dynamic ArgoCD Ingress** - Creates ingress with correct domain based on mode
+   - Location: `kind/setup-platform.sh:524-557`
+   - Kind: `argocd.127.0.0.1.nip.io`
+   - GCP: `argocd.<LoadBalancer-IP>.nip.io`
+
+7. ✅ **ArgoCD 5-Second Sync** - Configures fast reconciliation
+   - Location: `kind/setup-platform.sh:506-522`
+   - Sets `timeout.reconciliation: 5s` in argocd-cm ConfigMap
+
+8. ✅ **Destroy Script Enhancements** - Auto-detects clusters, cleans up kubeconfig
+   - Location: `kind/destroy.sh`
+   - Detects both Kind and GKE clusters
+   - Cleans up kubeconfig to prevent bloat
+
+**Testing Results**:
+- ✅ Kind Mode: Works perfectly, full backward compatibility verified
+- ⚠️ GCP Mode: Partial success
+  - ✅ Cluster creation: Working
+  - ✅ LoadBalancer IP assignment: Working
+  - ✅ ArgoCD UI accessible: `https://argocd.34.74.53.101.nip.io` (200 OK)
+  - ❌ Spider-rainbows app: Returns 404 due to ingress domain conflict
+
+**Remaining Blocker**:
+- **Problem**: Spider-rainbows app ingress has wrong domain
+  - ArgoCD syncs ingress from external Git repo (`spider-rainbows-platform-config`) with hardcoded `127.0.0.1.nip.io`
+  - Script creates ingress with correct domain (`spider-rainbows.<LoadBalancer-IP>.nip.io`)
+  - ArgoCD's `selfHeal: true` reverts script's ingress every 5 seconds
+
+- **Attempted Solution**: Added `ignoreDifferences` config to ArgoCD Application
+  - Location: `kind/spider-rainbows-app.yaml:22-28`
+  - Config tells ArgoCD to ignore ingress `.spec` field
+  - Added `RespectIgnoreDifferences: true` to syncOptions
+  - **Status**: Implemented but not yet verified working
+
+**Test Clusters Created** (all cleaned up):
+1. `spider-rainbows-gitops` - Before name fix
+2. `20251031-180201-spider-rainbows` - Invalid (starts with number)
+3. `spider-rainbows-20251031-180227` - Valid, tested
+4. `spider-rainbows-20251031-181553` - Valid, tested
+5. `spider-rainbows-20251031-184716` - Valid, tested
+6. `spider-rainbows-20251031-190337` - Valid, tested (ArgoCD worked, app didn't)
+7. `spider-rainbows-20251031-195105` - Valid, deleted
+
+**Files Modified**:
+- `kind/setup-platform.sh` - Major additions for GCP support
+- `kind/destroy.sh` - Enhanced with auto-detection and cleanup
+- `kind/spider-rainbows-app.yaml` - Added ignoreDifferences config
+- `kind/cluster-config.yaml` - Removed hardcoded cluster name
+- `~/.zshrc` - Added gcloud SDK to PATH
+
+**Documentation Created**:
+- `MILESTONE-1-STATUS.md` - Comprehensive status document with:
+  - Complete implementation history
+  - 3 current problems with root causes
+  - 5 possible solutions with pros/cons analysis
+  - Test cluster history
+  - Clear next steps for verification
+  - Architecture decisions made
+  - Key learnings
+
+**Next Steps**:
+1. Deploy fresh GCP cluster to verify ignoreDifferences solution
+2. Observe ArgoCD behavior for 10+ seconds to confirm ingress persists
+3. Test app accessibility: `curl http://spider-rainbows.<IP>.nip.io/health`
+4. If successful, re-test Kind mode for backward compatibility
+5. Mark Milestone 1 complete once both modes verified working
+
+**Note**: Milestone 1 is NOT marked complete per explicit user instruction: "do NOT mark milestone 1 as complete. Not until the final script is proven to work with both kind and GCP"
+
 ---
 
 ## Success Metrics

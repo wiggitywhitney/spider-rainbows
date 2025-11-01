@@ -1,12 +1,13 @@
-# Kind cluster configuration for spider-rainbows GitOps demo
+# Kind cluster configuration for spider-rainbows demo
 # This cluster is optimized for:
 # - ArgoCD installation with ingress access
 # - nip.io domain support for demos (*.127.0.0.1.nip.io)
 # - Local development and conference presentations
+#
+# Note: Cluster name is provided via --name flag at creation time
 
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
-name: spider-rainbows-gitops
 nodes:
   - role: control-plane
     kubeadmConfigPatches:

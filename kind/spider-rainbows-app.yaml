@@ -16,6 +16,13 @@ spec:
     automated:
       prune: true
       selfHeal: true
-      syncInterval: 5s
     syncOptions:
     - CreateNamespace=true
+    - RespectIgnoreDifferences=true
+  # Tell ArgoCD to completely ignore the ingress spec - script manages it
+  ignoreDifferences:
+  - group: networking.k8s.io
+    kind: Ingress
+    name: spider-rainbows
+    jqPathExpressions:
+    - .spec
