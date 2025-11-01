@@ -621,13 +621,11 @@ validate_argocd_health() {
 # Phase 3: GitOps Repository Connection
 # =============================================================================
 
-generate_ingress_manifest() {
-    log_info "Generating spider-rainbows ingress manifest with domain: spider-rainbows.${BASE_DOMAIN}"
+apply_spider_rainbows_ingress() {
+    log_info "Applying spider-rainbows ingress with domain: spider-rainbows.${BASE_DOMAIN}"
 
-    local ingress_file="$(dirname "$0")/../gitops/manifests/spider-rainbows/ingress.yaml"
-
-    # Create ingress.yaml file that ArgoCD will find and manage
-    cat > "$ingress_file" <<EOF
+    # Apply ingress directly to cluster (infrastructure-specific, not managed by ArgoCD)
+    kubectl apply -f - <<EOF
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -652,7 +650,7 @@ spec:
               number: 80
 EOF
 
-    log_success "Ingress manifest generated at: $ingress_file"
+    log_success "Ingress applied with domain: spider-rainbows.${BASE_DOMAIN}"
 }
 
 deploy_spider_rainbows_app() {
@@ -893,9 +891,9 @@ main() {
     validate_argocd_health
 
     # Phase 3: GitOps Repository Connection & App Deployment
-    generate_ingress_manifest  # Generate ingress.yaml so ArgoCD can find and manage it
     deploy_spider_rainbows_app
     validate_app_sync
+    apply_spider_rainbows_ingress  # Apply environment-specific ingress (not managed by ArgoCD)
     validate_app_access
 
     # Phase 5: Final Comprehensive Health Check
