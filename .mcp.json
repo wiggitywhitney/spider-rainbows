@@ -1,0 +1,33 @@
+{
+  "mcpServers": {
+    "commit-story": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["node_modules/commit-story/src/mcp/server.js"],
+      "env": {}
+    },
+    "coderabbitai": {
+      "command": "npx",
+      "args": [
+        "coderabbitai-mcp@latest"
+      ],
+      "env": {
+        "GITHUB_PAT": "${GITHUB_TOKEN}"
+      }
+    },
+    "dot-ai": {
+      "command": "docker",
+      "args": [
+        "compose",
+        "--env-file",
+        ".env",
+        "-f",
+        "docker-compose-dot-ai.yaml",
+        "run",
+        "--rm",
+        "--remove-orphans",
+        "dot-ai"
+      ]
+    }
+  }
+}

@@ -89,7 +89,7 @@ New spider version appears instantly! 🎉
 ### Cleanup
 
 ```bash
-./kind/destroy.sh
+./destroy.sh
 ```
 
 ---
@@ -146,7 +146,7 @@ kubectl port-forward svc/spider-rainbows -n default 8080:80
 To completely reset the environment:
 
 ```bash
-./kind/destroy.sh  # For Kind clusters
+./destroy.sh  # Destroys Kind or GCP clusters
 ./setup-platform.sh
 ```
 

@@ -34,6 +34,9 @@ log_info "🕷️  Spider-Rainbows Cluster Cleanup"
 log_info "======================================"
 echo ""
 
+# Initialize MCP cleanup flag
+MCP_CLEANED=false
+
 # Arrays to store found clusters
 kind_clusters=()
 gcp_clusters=()
@@ -113,6 +116,16 @@ for cluster in "${gcp_clusters[@]}"; do
             kubectl config unset "clusters.$CONTEXT_NAME" 2>/dev/null || true
 
             log_success "Kubeconfig cleaned up"
+
+            # Clean up MCP authentication files
+            log_info "Cleaning up MCP authentication files..."
+            rm -f ~/.kube/config-dot-ai
+            rm -f /tmp/ca.crt
+            rm -f /tmp/dot-ai-token.txt
+            log_success "MCP authentication files removed"
+
+            # Set flag to remind about Claude Code restart
+            MCP_CLEANED=true
         else
             log_error "Failed to delete GKE cluster"
             exit 1
@@ -128,3 +141,10 @@ log_success "=============================================="
 log_success "✅ Cleanup complete"
 log_success "=============================================="
 echo ""
+
+# Show MCP reminder if files were cleaned up
+if [ "$MCP_CLEANED" = true ]; then
+    log_info "⚠️  MCP Server Authentication Cleaned Up"
+    log_info "Restart Claude Code if using dot-ai MCP server"
+    echo ""
+fi

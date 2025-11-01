@@ -469,6 +469,107 @@ validate_cluster_health() {
 }
 
 # =============================================================================
+# MCP Server Configuration (Optional - for dot-ai)
+# =============================================================================
+
+configure_mcp_authentication() {
+    log_info "Configuring MCP server authentication (optional)..."
+
+    # Only configure if .mcp.json exists (MCP server is being used)
+    if [ ! -f ".mcp.json" ]; then
+        log_info "No .mcp.json found - skipping MCP authentication setup"
+        return 0
+    fi
+
+    # For Kind clusters, clean up any stale GCP MCP configuration
+    if [ "$MODE" != "gcp" ]; then
+        log_info "Kind cluster detected - MCP works with default config"
+
+        # Defensively remove any stale GCP MCP auth files
+        if [ -f ~/.kube/config-dot-ai ] || [ -f /tmp/ca.crt ] || [ -f /tmp/dot-ai-token.txt ]; then
+            log_info "Cleaning up stale GCP MCP authentication files..."
+            rm -f ~/.kube/config-dot-ai
+            rm -f /tmp/ca.crt
+            rm -f /tmp/dot-ai-token.txt
+            log_success "Stale MCP authentication files removed"
+            MCP_CONFIGURED=true  # Set flag to remind about Claude Code restart
+        fi
+
+        return 0
+    fi
+
+    log_info "Creating service account for dot-ai MCP server..."
+
+    # Create service account and token
+    kubectl apply -f - <<EOF
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dot-ai
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dot-ai-cluster-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: dot-ai
+  namespace: default
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dot-ai-token
+  namespace: default
+  annotations:
+    kubernetes.io/service-account.name: dot-ai
+type: kubernetes.io/service-account-token
+EOF
+
+    log_info "Waiting for token to be generated..."
+    sleep 3
+
+    # Extract token and CA cert
+    kubectl get secret dot-ai-token -n default -o jsonpath='{.data.token}' | base64 -d > /tmp/dot-ai-token.txt
+    kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' | base64 -d > /tmp/ca.crt
+
+    # Get cluster server
+    local cluster_server
+    cluster_server=$(kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.server}')
+
+    # Create token-based kubeconfig
+    cat > ~/.kube/config-dot-ai <<EOF
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    certificate-authority: /root/.kube/ca.crt
+    server: ${cluster_server}
+  name: gke-cluster
+contexts:
+- context:
+    cluster: gke-cluster
+    user: dot-ai
+  name: dot-ai-context
+current-context: dot-ai-context
+users:
+- name: dot-ai
+  user:
+    token: $(cat /tmp/dot-ai-token.txt)
+EOF
+
+    log_success "MCP server authentication configured"
+
+    # Set flag to show reminder at the end
+    MCP_CONFIGURED=true
+}
+
+# =============================================================================
 # Phase 2: ArgoCD Installation
 # =============================================================================
 
@@ -660,7 +761,7 @@ deploy_spider_rainbows_app() {
     log_info "Deploying spider-rainbows application via ArgoCD..."
 
     local app_file
-    app_file="$(dirname "$0")/../gitops/applications/spider-rainbows-app.yaml"
+    app_file="$(dirname "$0")/gitops/applications/spider-rainbows-app.yaml"
 
     if [ ! -f "$app_file" ]; then
         log_error "ArgoCD Application file not found: $app_file"
@@ -874,9 +975,12 @@ validate_all_components() {
 
 main() {
     echo ""
-    log_info "🕷️  Spider-Rainbows GitOps Demo Setup"
-    log_info "======================================"
+    log_info "🕷️  Spider-Rainbows Demo Setup"
+    log_info "==============================="
     echo ""
+
+    # Initialize MCP configuration flag
+    MCP_CONFIGURED=false
 
     # Prompt for deployment mode
     prompt_deployment_mode
@@ -884,6 +988,7 @@ main() {
     # Phase 1: Cluster and Ingress
     check_prerequisites
     create_cluster
+    configure_mcp_authentication  # Configure MCP server auth if needed
     install_ingress_controller
 
     # Phase 2: ArgoCD Installation
@@ -938,6 +1043,13 @@ main() {
         log_info "  - Test app at http://spider-rainbows.${BASE_DOMAIN}"
         log_info "  - Make code changes to trigger CI/CD workflow"
         echo ""
+
+        # Show MCP reminder if it was configured
+        if [ "$MCP_CONFIGURED" = true ]; then
+            log_info "⚠️  MCP Server Authentication Updated"
+            log_info "Restart Claude Code to connect dot-ai MCP server to this cluster"
+            echo ""
+        fi
     else
         # Validation failed
         echo ""

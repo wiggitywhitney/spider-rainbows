@@ -7,9 +7,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/wiggitywhitney/spider-rainbows.git
-    # TODO: Change to 'main' after merging PR
-    # Using feature branch for testing - this branch will be deleted after merge
-    targetRevision: feature/prd-10-cloud-demo-environment-custom-domain
+    targetRevision: main
     path: gitops/manifests/spider-rainbows
   destination:
     server: https://kubernetes.default.svc

@@ -5,9 +5,6 @@ dist/
 journal/
 commit-story.config.json
 
-# MCP configuration
-.mcp.json
-
 # Environment variables (API keys and secrets)
 .env
 
