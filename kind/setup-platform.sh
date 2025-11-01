@@ -621,11 +621,45 @@ validate_argocd_health() {
 # Phase 3: GitOps Repository Connection
 # =============================================================================
 
+generate_ingress_manifest() {
+    log_info "Generating spider-rainbows ingress manifest with domain: spider-rainbows.${BASE_DOMAIN}"
+
+    local ingress_file="$(dirname "$0")/../gitops/manifests/spider-rainbows/ingress.yaml"
+
+    # Create ingress.yaml file that ArgoCD will find and manage
+    cat > "$ingress_file" <<EOF
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: spider-rainbows
+  namespace: default
+  labels:
+    app: spider-rainbows
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: spider-rainbows.${BASE_DOMAIN}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: spider-rainbows
+            port:
+              number: 80
+EOF
+
+    log_success "Ingress manifest generated at: $ingress_file"
+}
+
 deploy_spider_rainbows_app() {
     log_info "Deploying spider-rainbows application via ArgoCD..."
 
     local app_file
-    app_file="$(dirname "$0")/spider-rainbows-app.yaml"
+    app_file="$(dirname "$0")/../gitops/applications/spider-rainbows-app.yaml"
 
     if [ ! -f "$app_file" ]; then
         log_error "ArgoCD Application file not found: $app_file"
@@ -697,32 +731,6 @@ validate_app_sync() {
     wait_for_pods "default" "app=spider-rainbows" 300
 
     log_success "Spider-rainbows pods are running"
-
-    # Create spider-rainbows ingress dynamically with correct domain
-    log_info "Creating spider-rainbows ingress with dynamic domain..."
-
-    cat <<EOF | kubectl apply -f -
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: spider-rainbows
-  namespace: default
-spec:
-  ingressClassName: nginx
-  rules:
-  - host: spider-rainbows.${BASE_DOMAIN}
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: spider-rainbows
-            port:
-              number: 80
-EOF
-
-    log_success "Spider-rainbows ingress created with domain: spider-rainbows.${BASE_DOMAIN}"
 }
 
 validate_app_access() {
@@ -876,7 +884,6 @@ main() {
     check_prerequisites
     create_cluster
     install_ingress_controller
-    validate_cluster_health
 
     # Phase 2: ArgoCD Installation
     install_argocd
@@ -886,6 +893,7 @@ main() {
     validate_argocd_health
 
     # Phase 3: GitOps Repository Connection & App Deployment
+    generate_ingress_manifest  # Generate ingress.yaml so ArgoCD can find and manage it
     deploy_spider_rainbows_app
     validate_app_sync
     validate_app_access
