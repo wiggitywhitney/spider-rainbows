@@ -19,16 +19,20 @@ This is the star of the show - demonstrating complete GitOps automation:
 Create the GitOps platform with one command:
 
 ```bash
-./kind/setup-platform.sh
+./setup-platform.sh
 ```
 
+The script will prompt you to choose between:
+1. **Kind (local)** - Local Kubernetes cluster for development
+2. **GCP (cloud)** - Google Kubernetes Engine cluster for demos
+
 This creates:
-- **Kind cluster** - Local Kubernetes cluster
-- **Ingress-nginx** - Routes traffic via `*.127.0.0.1.nip.io` domains
+- **Kubernetes cluster** - Kind (local) or GKE (cloud)
+- **Ingress-nginx** - Routes traffic via nip.io domains
 - **ArgoCD** - GitOps continuous delivery tool
 - **Spider-rainbows app** - Already deployed and managed by ArgoCD
 
-The app configuration lives in a separate GitOps repository: [spider-rainbows-platform-config](https://github.com/wiggitywhitney/spider-rainbows-platform-config)
+The app configuration lives in the `gitops/` folder of this repository
 
 **Access the live app:** http://spider-rainbows.127.0.0.1.nip.io
 
@@ -60,7 +64,7 @@ The push triggers automation:
 1. **Build** - GitHub Actions builds new Docker image using `Dockerfile`
 2. **Tag** - Image tagged with commit SHA (e.g., `main-abc1234`)
 3. **Push** - Image pushed to DockerHub: `wiggitywhitney/spider-rainbows`
-4. **Update Config** - Workflow updates deployment manifest in [spider-rainbows-platform-config](https://github.com/wiggitywhitney/spider-rainbows-platform-config) with new image tag
+4. **Update Config** - Workflow updates deployment manifest in `gitops/manifests/spider-rainbows/deployment.yaml` with new image tag
 
 ### 5. GitOps Sync (ArgoCD)
 
@@ -92,10 +96,17 @@ New spider version appears instantly! 🎉
 
 ## Prerequisites
 
+**For Kind (local) deployments:**
 - [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) - Kubernetes in Docker
 - [kubectl](https://kubernetes.io/docs/tasks/tools/#kubectl) - Kubernetes CLI
 - [docker](https://docs.docker.com/get-docker/) - Running and accessible
 - Ports 80 and 443 available on your machine
+
+**For GCP (cloud) deployments:**
+- [kubectl](https://kubernetes.io/docs/tasks/tools/#kubectl) - Kubernetes CLI
+- [gcloud](https://cloud.google.com/sdk/docs/install) - Google Cloud SDK
+- GCP account with billing enabled
+- Configured GCP project (update `GCP_PROJECT` variable in script)
 
 ---
 
@@ -106,11 +117,11 @@ New spider version appears instantly! 🎉
 - Health: http://spider-rainbows.127.0.0.1.nip.io/health
 
 **ArgoCD UI** (view sync status):
-- URL: https://argocd.127.0.0.1.nip.io
+- URL: https://argocd.127.0.0.1.nip.io (Kind) or https://argocd.{LOADBALANCER_IP}.nip.io (GCP)
 - Username: `admin` / Password: `admin123`
 
-**GitOps Config Repo:**
-- https://github.com/wiggitywhitney/spider-rainbows-platform-config
+**GitOps Manifests:**
+- Located in `gitops/` directory of this repository
 
 ---
 
@@ -135,8 +146,8 @@ kubectl port-forward svc/spider-rainbows -n default 8080:80
 To completely reset the environment:
 
 ```bash
-./kind/destroy.sh
-./kind/setup-platform.sh
+./kind/destroy.sh  # For Kind clusters
+./setup-platform.sh
 ```
 
 ---
