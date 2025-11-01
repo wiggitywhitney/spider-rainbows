@@ -52,37 +52,31 @@ jobs:
         id: sha
         run: echo "short_sha=$(echo "${{ github.sha }}" | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
-      - name: Update GitOps repository
+      - name: Update GitOps manifests
         env:
-          GITOPS_TOKEN: ${{ secrets.GITOPS_REPO_TOKEN }}
-          GITOPS_REPO: wiggitywhitney/spider-rainbows-platform-config
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IMAGE_TAG: main-${{ steps.sha.outputs.short_sha }}
         run: |
-          echo "Updating GitOps repo with new image tag..."
+          echo "Updating GitOps manifests with new image tag..."
           echo "Target image tag: $IMAGE_TAG"
 
           # Configure git
           git config --global user.name "spider-rainbows-bot"
           git config --global user.email "bot@spider-rainbows.local"
 
-          # Clone GitOps repository using PAT
-          git clone https://x-access-token:${GITOPS_TOKEN}@github.com/${GITOPS_REPO}.git gitops-repo
-
-          cd gitops-repo
-
           # Update deployment.yaml with new image tag
-          sed -i "s|image: wiggitywhitney/spider-rainbows:.*|image: wiggitywhitney/spider-rainbows:${IMAGE_TAG}|g" spider-rainbows/deployment.yaml
+          sed -i "s|image: wiggitywhitney/spider-rainbows:.*|image: wiggitywhitney/spider-rainbows:${IMAGE_TAG}|g" gitops/manifests/spider-rainbows/deployment.yaml
 
           # Show the change
           echo "Updated deployment.yaml:"
-          grep "image:" spider-rainbows/deployment.yaml
+          grep "image:" gitops/manifests/spider-rainbows/deployment.yaml
 
-          # Commit and push
-          git add spider-rainbows/deployment.yaml
+          # Commit and push to main branch
+          git add gitops/manifests/spider-rainbows/deployment.yaml
           git commit -m "chore: update spider-rainbows image to ${IMAGE_TAG}
 
           Automated update from spider-rainbows CI/CD pipeline
           Source commit: ${{ github.sha }}
           Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-          git push origin main
+          git push origin HEAD:main
