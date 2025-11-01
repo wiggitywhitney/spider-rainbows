@@ -1,7 +1,8 @@
 # PRD: Cloud Demo Environment with Custom Domain
 
-**Status**: Draft
+**Status**: Complete
 **Created**: 2025-10-28
+**Completed**: 2025-11-01
 **GitHub Issue**: [#10](https://github.com/wiggitywhitney/spider-rainbows/issues/10)
 **Priority**: Medium
 
@@ -381,25 +382,27 @@ spider-rainbows/
 ### Milestone 4: CI/CD Integration and Documentation
 **Goal**: Complete end-to-end CI/CD workflow and documentation
 
+**Status**: ✅ Complete
+
 **Tasks**:
-- [ ] Test CI/CD pipeline integration (code change → build → deploy → ArgoCD sync)
-- [ ] Verify GitHub Actions successfully updates gitops/manifests/
-- [ ] Confirm ArgoCD auto-syncs after manifest update
-- [ ] Validate complete deployment cycle end-to-end
-- Add comprehensive validation checks for both modes
-- Test complete setup/destroy cycles (Kind and GCP)
-- Document prerequisites for each mode
-- Create mode-specific setup walkthroughs
-- Add troubleshooting guide
-- Document cleanup procedures
-- Update README with cloud deployment option
+- [x] Test CI/CD pipeline integration (code change → build → deploy → ArgoCD sync)
+- [x] Verify GitHub Actions successfully updates gitops/manifests/
+- [x] Confirm ArgoCD auto-syncs after manifest update
+- [x] Validate complete deployment cycle end-to-end
+- [x] Add comprehensive validation checks for both modes
+- [x] Test complete setup/destroy cycles (Kind and GCP)
+- [x] Document prerequisites for each mode
+- [x] Create mode-specific setup walkthroughs
+- [x] Add troubleshooting guide
+- [x] Document cleanup procedures
+- [x] Update README with cloud deployment option
 
 **Success Criteria**:
-- Setup script completes end-to-end for both modes
-- All validation checks pass
-- Documentation enables reproduction
-- Common issues documented with solutions
-- Destroy script works reliably for both modes
+- [x] Setup script completes end-to-end for both modes
+- [x] All validation checks pass
+- [x] Documentation enables reproduction
+- [x] Common issues documented with solutions
+- [x] Destroy script works reliably for both modes
 
 ---
 
@@ -946,7 +949,123 @@ spider-rainbows/
 - `54362ce` - chore: remove Phase 4 reference from setup script output
 - `26bb2f1` - fix: update destroy script to detect timestamped Kind clusters
 
-**Next Milestone**: Milestone 4 - CI/CD Integration Testing
-- Test code change → build → deploy → ArgoCD sync workflow
-- Verify GitHub Actions updates gitops/manifests/ correctly
-- Confirm end-to-end automation works in cloud environment
+---
+
+### 2025-11-01: ✅ MILESTONE 4 COMPLETE - CI/CD Integration and Cleanup
+
+**Status**: Milestone 4 complete (100%) - PRD #10 fully complete
+
+**Implementation Time**: ~4 hours
+
+**Completed Tasks**:
+- Created PR #18 with CI/CD test banner (adding visible UI element to test workflow)
+- Addressed 4 CodeRabbit issues systematically:
+  - Fixed grep pattern bug: `grep -c "Ready"` → `grep -cw "Ready"` (prevents matching "NotReady")
+  - Fixed variable scope: Added `local ready_nodes=0` before while loop (prevents unset variable errors)
+  - Fixed hardcoded test URL: Changed to use `${BASE_DOMAIN}` variable (supports both Kind and GCP)
+  - Added error handling for cancelled input: EOF/Ctrl+D handling in `prompt_deployment_mode()`
+- Relocated setup-platform.sh to root directory (from `kind/setup-platform.sh` to `./setup-platform.sh`)
+- Updated README comprehensively:
+  - Documented interactive mode selection (Kind vs GCP)
+  - Added prerequisites for both deployment modes
+  - Updated script location references throughout
+  - Documented GitOps manifests location (`gitops/` folder)
+  - Updated access URLs to account for both deployment types
+- Merged PR #18 to main branch
+- Fixed GitHub Actions permissions issue: Added `contents: write` permission to workflow
+- Fixed ArgoCD branch tracking: Patched Application to watch `main` instead of feature branch
+- Validated complete CI/CD workflow end-to-end on live GCP cluster
+- Removed test banner from application (commit 7a15929)
+- Cleaned up GCP cluster via destroy script (cluster: spider-rainbows-20251101-111610)
+
+**Test Cluster Details**:
+- Cluster: `spider-rainbows-20251101-111610`
+- Region: `us-east1`
+- LoadBalancer IP: `35.231.109.122`
+- App URL: http://spider-rainbows.35.231.109.122.nip.io
+- ArgoCD URL: https://argocd.35.231.109.122.nip.io
+
+**CI/CD Pipeline Test Results**:
+- ✅ Code change merged to main (PR #18 with banner addition)
+- ✅ GitHub Actions triggered automatically on merge
+- ✅ Docker image built successfully: `main-a67bd87`
+- ✅ GitHub Actions updated `gitops/manifests/spider-rainbows/deployment.yaml` automatically
+- ✅ Commit 7813373 created by spider-rainbows-bot
+- ✅ ArgoCD detected manifest change (5-second reconciliation interval)
+- ✅ ArgoCD synced new image to GKE cluster
+- ✅ Banner visible on live site: http://spider-rainbows.35.231.109.122.nip.io
+- ✅ Banner removal deployed successfully: `main-7a15929`
+- ✅ Complete workflow validated: code → build → GitOps update → ArgoCD sync → live deployment
+
+**Issues Encountered and Resolved**:
+
+1. **GitHub Actions Permission Error**:
+   - **Problem**: Workflow failed with "Permission denied" when pushing GitOps manifest updates
+   - **Root Cause**: After GitOps consolidation (Milestone 3), workflow switched from using PAT (for external repo) to `GITHUB_TOKEN` (for same repo). `GITHUB_TOKEN` lacks write permission by default
+   - **Solution**: Added `permissions: contents: write` to workflow job (commit a67bd87)
+   - **Learning**: When workflows push to same repo, explicit permissions required
+
+2. **ArgoCD Not Syncing New Image**:
+   - **Problem**: App showed old image (`main-4a936ff`) despite GitOps manifest showing new image (`main-a67bd87`)
+   - **Root Cause**: ArgoCD Application was still tracking feature branch `feature/prd-10-cloud-demo-environment-custom-domain` from setup, but PR #18 merged to `main`. Feature branch didn't have updated manifests
+   - **Solution**: Patched ArgoCD Application to track `main` branch:
+     ```bash
+     kubectl patch application spider-rainbows -n argocd --type merge \
+       -p '{"spec":{"source":{"targetRevision":"main"}}}'
+     ```
+   - **Result**: ArgoCD immediately synced (5-second interval), deployed correct image
+   - **Learning**: When merging PRs, ensure ArgoCD is watching the correct branch
+
+**Key Files Modified**:
+- `setup-platform.sh:347` - Fixed grep pattern (setup-platform.sh:347)
+- `setup-platform.sh:344` - Fixed variable scope (setup-platform.sh:344)
+- `setup-platform.sh:914-920` - Fixed dynamic context name display (setup-platform.sh:914-920)
+- `setup-platform.sh:935` - Fixed hardcoded test URL (setup-platform.sh:935)
+- `setup-platform.sh:68-71` - Added input error handling (setup-platform.sh:68-71)
+- `.github/workflows/build-push.yml:14` - Added contents: write permission
+- `README.md` - Comprehensive updates for dual-mode support
+- `src/App.jsx` - Banner addition and removal
+
+**Commits**:
+- `c334e4e` - fix: grep pattern and remove obsolete file
+- `23df47c` - fix: variable scope, dynamic context, hardcoded URL
+- `988ed53` - refactor: move setup-platform.sh to root directory
+- `87d590d` - fix: add error handling for cancelled input in mode selection
+- `a67bd87` - fix: add contents write permission to GitHub Actions workflow
+- `7813373` - chore: update spider-rainbows image to main-a67bd87 (automated by CI/CD)
+- `7a15929` - refactor: remove CI/CD test banner
+
+**Success Metrics Achieved**:
+- Setup script success rate: 100% (tested on both Kind and GCP)
+- Setup completion time: ~12 minutes for GCP, ~2 minutes for Kind
+- DNS resolution time: <1 minute (nip.io instant)
+- Destroy completion time: ~3 minutes for GCP cluster deletion
+- Zero manual cloud console steps required
+- CI/CD deploys work without manual intervention (fully automated)
+
+**Documentation Deliverables**:
+- README.md updated with clear dual-mode instructions
+- Prerequisites documented for both deployment modes
+- Troubleshooting guidance added for common issues
+- Script location and usage clearly documented
+- GitOps workflow explained with examples
+
+**Cluster Cleanup**:
+- ✅ GKE cluster `spider-rainbows-20251101-111610` deleted successfully
+- ✅ Kubeconfig cleaned up (removed gke_demoo-ooclock_us-east1_spider-rainbows-20251101-111610 entries)
+- ✅ All cloud resources removed (no ongoing costs)
+
+**Key Learnings**:
+1. **GITHUB_TOKEN Permissions**: When workflows push to the same repo (not external), explicit `contents: write` permission required
+2. **ArgoCD Branch Tracking**: Must manually update `targetRevision` when merging feature branch work to main
+3. **GitOps Consolidation Benefits**: Single-repo approach simplifies CI/CD (no cross-repo coordination)
+4. **Testing Strategy**: Adding/removing visible UI element (banner) provides clear validation signal for end-to-end testing
+5. **Code Review Integration**: CodeRabbit feedback significantly improved code quality (caught 4 bugs before merge)
+
+**Final State**:
+- All 4 milestones complete
+- Full CI/CD GitOps workflow operational
+- Setup works for both Kind (local) and GCP (cloud) deployments
+- Documentation comprehensive and validated
+- No running clusters (cost-free state)
+- PRD #10 ready for archival
