@@ -42,16 +42,6 @@ const App = () => {
 
   return (
     <div className="app-container">
-      <div style={{
-        backgroundColor: '#4CAF50',
-        color: 'white',
-        padding: '10px',
-        textAlign: 'center',
-        fontWeight: 'bold',
-        marginBottom: '20px'
-      }}>
-        🚀 CI/CD Test - Milestone 4 GitOps Flow
-      </div>
       <div className="rainbow-layout">
         <Rainbow
           ref={rainbowRef}
