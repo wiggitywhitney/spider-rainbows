@@ -344,7 +344,7 @@ create_gke_cluster() {
 
     while [ $elapsed -lt $timeout ]; do
         local ready_nodes
-        ready_nodes=$(kubectl get nodes --no-headers 2>/dev/null | grep -c "Ready" || echo "0")
+        ready_nodes=$(kubectl get nodes --no-headers 2>/dev/null | grep -cw "Ready" || echo "0")
 
         if [ "$ready_nodes" -eq "$total_nodes" ] && [ "$ready_nodes" -gt 0 ]; then
             log_success "All GKE nodes are Ready ($ready_nodes/$total_nodes nodes)"
