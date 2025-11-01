@@ -38,11 +38,13 @@ echo ""
 kind_clusters=()
 gcp_clusters=()
 
-# Check for Kind clusters (exact name only)
+# Check for Kind clusters (pattern match for timestamped names)
 if command -v kind &> /dev/null; then
-    if kind get clusters 2>/dev/null | grep -q "^${CLUSTER_NAME_PREFIX}$"; then
-        kind_clusters+=("$CLUSTER_NAME_PREFIX")
-    fi
+    while IFS= read -r cluster; do
+        if [[ -n "$cluster" ]]; then
+            kind_clusters+=("$cluster")
+        fi
+    done < <(kind get clusters 2>/dev/null | grep "^${CLUSTER_NAME_PREFIX}" || true)
 fi
 
 # Check for GCP clusters (pattern match for timestamped names)
