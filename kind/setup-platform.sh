@@ -341,9 +341,9 @@ create_gke_cluster() {
     local interval=5
     local total_nodes
     total_nodes=$(kubectl get nodes --no-headers 2>/dev/null | wc -l | tr -d ' ')
+    local ready_nodes=0
 
     while [ $elapsed -lt $timeout ]; do
-        local ready_nodes
         ready_nodes=$(kubectl get nodes --no-headers 2>/dev/null | grep -cw "Ready" || echo "0")
 
         if [ "$ready_nodes" -eq "$total_nodes" ] && [ "$ready_nodes" -gt 0 ]; then
@@ -911,7 +911,13 @@ main() {
         log_success "=============================================="
         echo ""
         log_info "Cluster: $CLUSTER_NAME"
-        log_info "Context: kind-$CLUSTER_NAME"
+        if [[ "$DEPLOYMENT_MODE" == "kind" ]]; then
+            log_info "Context: kind-$CLUSTER_NAME"
+        elif [[ "$DEPLOYMENT_MODE" == "gcp" ]]; then
+            local current_context
+            current_context=$(kubectl config current-context)
+            log_info "Context: $current_context"
+        fi
         echo ""
         log_info "ArgoCD Access:"
         log_info "  URL: https://argocd.${BASE_DOMAIN}"
@@ -926,7 +932,7 @@ main() {
         log_info ""
         log_info "Next steps:"
         log_info "  - Open ArgoCD UI to view application status"
-        log_info "  - Test app at http://spider-rainbows.127.0.0.1.nip.io"
+        log_info "  - Test app at http://spider-rainbows.${BASE_DOMAIN}"
         log_info "  - Make code changes to trigger CI/CD workflow"
         echo ""
     else
