@@ -65,7 +65,10 @@ prompt_deployment_mode() {
     echo ""
 
     while true; do
-        read -p "Enter choice [1-2]: " choice
+        read -p "Enter choice [1-2]: " choice || {
+            log_error "Input cancelled or error occurred"
+            exit 1
+        }
         case $choice in
             1)
                 DEPLOYMENT_MODE="kind"
