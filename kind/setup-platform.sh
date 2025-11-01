@@ -927,7 +927,7 @@ main() {
         log_info "Next steps:"
         log_info "  - Open ArgoCD UI to view application status"
         log_info "  - Test app at http://spider-rainbows.127.0.0.1.nip.io"
-        log_info "  - Make code changes to trigger CI/CD workflow (Phase 4)"
+        log_info "  - Make code changes to trigger CI/CD workflow"
         echo ""
     else
         # Validation failed
