@@ -2,7 +2,7 @@
 
 **Status**: Draft
 **Created**: 2025-10-31
-**GitHub Issue**: [#14](https://github.com/wiggitywhitney/spider-rainbows/issues/14)
+**GitHub Issue**: [#20](https://github.com/wiggitywhitney/spider-rainbows/issues/20)
 **Priority**: High
 
 ---
