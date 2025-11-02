@@ -42,6 +42,7 @@ This is problematic because conference attendees need to interact with the demo 
 - All interactive elements are easily tappable
 - No horizontal scrolling required
 - Layout looks intentional and polished on mobile
+- ArgoCD reverted to watching `main` branch before PR merge
 
 ## User Journey
 
