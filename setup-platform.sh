@@ -586,6 +586,9 @@ EOF
     # Extract token and CA cert with error handling
     log_info "Extracting token and CA certificate..."
 
+    # Clean up any existing files/directories to avoid conflicts
+    rm -rf /tmp/dot-ai-token.txt /tmp/ca.crt
+
     local token_extracted=false
     local ca_extracted=false
     local token_valid=false
