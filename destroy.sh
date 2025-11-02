@@ -86,6 +86,16 @@ for cluster in "${kind_clusters[@]}"; do
         log_info "Deleting Kind cluster '$cluster'..."
         if kind delete cluster --name "$cluster"; then
             log_success "Kind cluster deleted successfully"
+
+            # Clean up MCP authentication files (symlink for Kind clusters)
+            log_info "Cleaning up MCP authentication files..."
+            rm -rf ~/.kube/config-dot-ai
+            rm -rf /tmp/ca.crt
+            rm -rf /tmp/dot-ai-token.txt
+            log_success "MCP authentication files removed"
+
+            # Set flag to remind about Claude Code restart
+            MCP_CLEANED=true
         else
             log_error "Failed to delete Kind cluster"
             exit 1
@@ -117,11 +127,11 @@ for cluster in "${gcp_clusters[@]}"; do
 
             log_success "Kubeconfig cleaned up"
 
-            # Clean up MCP authentication files
+            # Clean up MCP authentication files (including Docker-created directories)
             log_info "Cleaning up MCP authentication files..."
             rm -rf ~/.kube/config-dot-ai
-            rm -f /tmp/ca.crt
-            rm -f /tmp/dot-ai-token.txt
+            rm -rf /tmp/ca.crt
+            rm -rf /tmp/dot-ai-token.txt
             log_success "MCP authentication files removed"
 
             # Set flag to remind about Claude Code restart

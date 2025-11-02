@@ -484,19 +484,24 @@ configure_mcp_authentication() {
         return 0
     fi
 
-    # For Kind clusters, clean up any stale GCP MCP configuration
+    # For Kind clusters, clean up any stale GCP MCP configuration and create symlink
     if [ "$DEPLOYMENT_MODE" != "gcp" ]; then
         log_info "Kind cluster detected - MCP works with default config"
 
-        # Defensively remove any stale GCP MCP auth files
-        if [ -e ~/.kube/config-dot-ai ] || [ -f /tmp/ca.crt ] || [ -f /tmp/dot-ai-token.txt ]; then
+        # Defensively remove any stale GCP MCP auth files (including Docker-created directories)
+        if [ -e ~/.kube/config-dot-ai ] || [ -e /tmp/ca.crt ] || [ -e /tmp/dot-ai-token.txt ]; then
             log_info "Cleaning up stale GCP MCP authentication files..."
             rm -rf ~/.kube/config-dot-ai
-            rm -f /tmp/ca.crt
-            rm -f /tmp/dot-ai-token.txt
+            rm -rf /tmp/ca.crt
+            rm -rf /tmp/dot-ai-token.txt
             log_success "Stale MCP authentication files removed"
-            MCP_CONFIGURED=true  # Set flag to remind about Claude Code restart
         fi
+
+        # Create symlink so docker-compose can mount Kind's kubeconfig
+        log_info "Configuring MCP to use Kind cluster kubeconfig..."
+        ln -sf ~/.kube/config ~/.kube/config-dot-ai
+        log_success "MCP configured to use Kind cluster kubeconfig"
+        MCP_CONFIGURED=true  # Set flag to remind about Claude Code restart
 
         return 0
     fi
