@@ -17,7 +17,7 @@ set -euo pipefail  # Exit on error, undefined variables, and pipe failures
 # =============================================================================
 
 CLUSTER_NAME="spider-rainbows-$(date +%Y%m%d-%H%M%S)"
-CLUSTER_CONFIG="$(dirname "$0")/cluster-config.yaml"
+CLUSTER_CONFIG="$(dirname "$0")/kind/cluster-config.yaml"
 INGRESS_NGINX_VERSION="v1.9.4"
 
 # GCP Configuration
@@ -366,6 +366,9 @@ create_gke_cluster() {
 }
 
 create_cluster() {
+    # TODO: Add cleanup prompts on cluster creation failure
+    # When Kind/GCP cluster creation fails, prompt: "Cluster creation failed. Do you want to cleanup partial resources? [y/N]"
+    # This prevents users from having to manually run destroy.sh before retrying.
     if [[ "$DEPLOYMENT_MODE" == "kind" ]]; then
         create_kind_cluster
     elif [[ "$DEPLOYMENT_MODE" == "gcp" ]]; then
@@ -482,7 +485,7 @@ configure_mcp_authentication() {
     fi
 
     # For Kind clusters, clean up any stale GCP MCP configuration
-    if [ "$MODE" != "gcp" ]; then
+    if [ "$DEPLOYMENT_MODE" != "gcp" ]; then
         log_info "Kind cluster detected - MCP works with default config"
 
         # Defensively remove any stale GCP MCP auth files
@@ -1065,6 +1068,8 @@ main() {
         log_info "  kubectl get pods -A"
         log_info "  kubectl get application spider-rainbows -n argocd"
         echo ""
+        # TODO: Add interactive prompt: "Setup failed. Do you want to cleanup the partial cluster? [y/N]"
+        # If yes, call destroy.sh automatically. This gives users control while avoiding manual cleanup steps.
         exit 1
     fi
 }
