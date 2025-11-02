@@ -2,7 +2,7 @@
 .add-spider-container {
   position: absolute;
   bottom: -0px;
-  left: 25%;
+  left: 50%;
   transform: translateX(-50%);
   z-index: 11;
 }
@@ -18,6 +18,24 @@
   font-family: 'SpiderFont', sans-serif;
   white-space: nowrap;
   outline: none !important;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .add-spider-button {
+    font-size: 24px;
+    padding: 12px 24px;
+    /* Ensure minimum touch target size of 44x44px */
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 414px) {
+  .add-spider-button {
+    font-size: 20px;
+    padding: 12px 20px;
+  }
 }
 
 .add-spider-button:hover,
