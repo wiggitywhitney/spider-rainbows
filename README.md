@@ -152,6 +152,51 @@ To completely reset the environment:
 
 ---
 
+## MCP Server Integration (AI-Powered Kubernetes Troubleshooting)
+
+This demo includes optional integration with the [dot-ai MCP server](https://github.com/vfarcic/dot-ai) for AI-powered Kubernetes troubleshooting and remediation through Claude Code.
+
+### What is MCP?
+
+The Model Context Protocol (MCP) allows Claude Code to interact with external tools. The dot-ai MCP server provides Kubernetes diagnostics, issue analysis, and remediation capabilities.
+
+### Automatic Setup
+
+The `setup-platform.sh` script automatically configures MCP authentication:
+
+**For GCP clusters:**
+- Creates Kubernetes service account with cluster-admin access
+- Generates token-based authentication (no gcloud plugin needed in Docker)
+- Creates `~/.kube/config-dot-ai` with service account credentials
+
+**For Kind clusters:**
+- Creates symlink `~/.kube/config-dot-ai` → `~/.kube/config`
+- Uses default kubeconfig (no special authentication needed)
+
+**After setup completes, restart Claude Code** to connect the MCP server to your cluster.
+
+### Using MCP Tools
+
+Once configured, you can use Claude Code to:
+- Analyze application health and diagnose issues
+- Get AI-powered remediation recommendations
+- Execute kubectl commands through the MCP server
+- Troubleshoot deployment, pod, and service problems
+
+Example: "Analyze the health of the spider-rainbows application"
+
+### MCP Configuration Files
+
+- `.mcp.json` - Claude Code MCP server configuration
+- `docker-compose-dot-ai.yaml` - MCP server Docker Compose setup
+- `docs/mcp-gke-authentication.md` - Detailed GKE authentication guide
+
+### Cleanup
+
+The `destroy.sh` script automatically removes MCP authentication files when destroying clusters. You'll see a reminder to restart Claude Code after cleanup.
+
+---
+
 ## Developer Reference
 
 ### Local Development
