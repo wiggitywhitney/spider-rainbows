@@ -17,7 +17,7 @@ set -euo pipefail  # Exit on error, undefined variables, and pipe failures
 # =============================================================================
 
 CLUSTER_NAME="spider-rainbows-$(date +%Y%m%d-%H%M%S)"
-CLUSTER_CONFIG="$(dirname "$0")/cluster-config.yaml"
+CLUSTER_CONFIG="$(dirname "$0")/kind/cluster-config.yaml"
 INGRESS_NGINX_VERSION="v1.9.4"
 
 # GCP Configuration
@@ -99,6 +99,14 @@ check_kind_prerequisites() {
 
     if ! command -v kubectl &> /dev/null; then
         missing_tools+=("kubectl")
+    else
+        # Check kubectl version (v1.23+ required for MCP token wait functionality)
+        local kubectl_version
+        kubectl_version=$(kubectl version --client -o json 2>/dev/null | grep -o '"minor":"[0-9]*"' | grep -o '[0-9]*' || echo "0")
+        if [ "$kubectl_version" -lt 23 ]; then
+            log_warning "kubectl v1.23+ recommended (you have v1.$kubectl_version)"
+            log_warning "MCP server token authentication may require manual wait times"
+        fi
     fi
 
     if ! command -v docker &> /dev/null; then
@@ -160,6 +168,14 @@ check_gcp_prerequisites() {
     # Check kubectl
     if ! command -v kubectl &> /dev/null; then
         missing_tools+=("kubectl")
+    else
+        # Check kubectl version (v1.23+ required for MCP token wait functionality)
+        local kubectl_version
+        kubectl_version=$(kubectl version --client -o json 2>/dev/null | grep -o '"minor":"[0-9]*"' | grep -o '[0-9]*' || echo "0")
+        if [ "$kubectl_version" -lt 23 ]; then
+            log_warning "kubectl v1.23+ recommended (you have v1.$kubectl_version)"
+            log_warning "MCP server token authentication may require manual wait times"
+        fi
     fi
 
     # Check curl
@@ -367,9 +383,31 @@ create_gke_cluster() {
 
 create_cluster() {
     if [[ "$DEPLOYMENT_MODE" == "kind" ]]; then
-        create_kind_cluster
+        if ! create_kind_cluster; then
+            log_error "Cluster creation failed"
+            echo ""
+            read -p "Do you want to cleanup partial resources? [y/N]: " cleanup_choice
+            if [[ "$cleanup_choice" =~ ^[Yy]$ ]]; then
+                log_info "Running cleanup..."
+                ./destroy.sh
+            else
+                log_info "Skipping cleanup - run ./destroy.sh manually if needed"
+            fi
+            exit 1
+        fi
     elif [[ "$DEPLOYMENT_MODE" == "gcp" ]]; then
-        create_gke_cluster
+        if ! create_gke_cluster; then
+            log_error "Cluster creation failed"
+            echo ""
+            read -p "Do you want to cleanup partial resources? [y/N]: " cleanup_choice
+            if [[ "$cleanup_choice" =~ ^[Yy]$ ]]; then
+                log_info "Running cleanup..."
+                ./destroy.sh
+            else
+                log_info "Skipping cleanup - run ./destroy.sh manually if needed"
+            fi
+            exit 1
+        fi
     else
         log_error "Invalid deployment mode: $DEPLOYMENT_MODE"
         exit 1
@@ -466,6 +504,161 @@ validate_cluster_health() {
         log_error "Ingress controller is not healthy"
         exit 1
     fi
+}
+
+# =============================================================================
+# MCP Server Configuration (Optional - for dot-ai)
+# =============================================================================
+
+configure_mcp_authentication() {
+    log_info "Configuring MCP server authentication (optional)..."
+
+    # Only configure if .mcp.json exists (MCP server is being used)
+    if [ ! -f ".mcp.json" ]; then
+        log_info "No .mcp.json found - skipping MCP authentication setup"
+        return 0
+    fi
+
+    # For Kind clusters, clean up any stale GCP MCP configuration and create symlink
+    if [ "$DEPLOYMENT_MODE" != "gcp" ]; then
+        log_info "Kind cluster detected - MCP works with default config"
+
+        # Defensively remove any stale GCP MCP auth files (including Docker-created directories)
+        if [ -e ~/.kube/config-dot-ai ] || [ -e /tmp/ca.crt ] || [ -e /tmp/dot-ai-token.txt ]; then
+            log_info "Cleaning up stale GCP MCP authentication files..."
+            rm -rf ~/.kube/config-dot-ai
+            rm -rf /tmp/ca.crt
+            rm -rf /tmp/dot-ai-token.txt
+            log_success "Stale MCP authentication files removed"
+        fi
+
+        # Create symlink so docker-compose can mount Kind's kubeconfig
+        log_info "Configuring MCP to use Kind cluster kubeconfig..."
+        ln -sf ~/.kube/config ~/.kube/config-dot-ai
+        log_success "MCP configured to use Kind cluster kubeconfig"
+        MCP_CONFIGURED=true  # Set flag to remind about Claude Code restart
+
+        return 0
+    fi
+
+    log_info "Creating service account for dot-ai MCP server..."
+
+    # Create service account and token
+    kubectl apply -f - <<EOF
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dot-ai
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dot-ai-cluster-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: dot-ai
+  namespace: default
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dot-ai-token
+  namespace: default
+  annotations:
+    kubernetes.io/service-account.name: dot-ai
+type: kubernetes.io/service-account-token
+EOF
+
+    log_info "Waiting for token to be generated..."
+    # Note: kubectl wait --for=jsonpath requires kubectl v1.23+ (Nov 2021)
+    # On older versions, this command will fail silently (error output is suppressed)
+    # and fall back to the 5-second sleep below
+    if ! kubectl wait --for=jsonpath='{.data.token}' secret/dot-ai-token -n default --timeout=30s &>/dev/null; then
+        log_warning "Token not immediately available, waiting additional time..."
+        sleep 5
+    fi
+
+    # Extract token and CA cert with error handling
+    log_info "Extracting token and CA certificate..."
+
+    local token_extracted=false
+    local ca_extracted=false
+    local token_valid=false
+    local ca_valid=false
+
+    if kubectl get secret dot-ai-token -n default -o jsonpath='{.data.token}' | base64 -d > /tmp/dot-ai-token.txt; then
+        token_extracted=true
+        if [ -s /tmp/dot-ai-token.txt ]; then
+            token_valid=true
+        fi
+    fi
+
+    if kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' | base64 -d > /tmp/ca.crt; then
+        ca_extracted=true
+        if [ -s /tmp/ca.crt ]; then
+            ca_valid=true
+        fi
+    fi
+
+    # Check for failures and provide appropriate error messages
+    if [ "$token_extracted" = false ] || [ "$token_valid" = false ]; then
+        if [ "$token_extracted" = false ]; then
+            log_error "Failed to extract dot-ai token from secret"
+        else
+            log_error "Token file is empty - secret may not be ready yet"
+        fi
+        return 1
+    fi
+
+    if [ "$ca_extracted" = false ] || [ "$ca_valid" = false ]; then
+        if [ "$ca_extracted" = false ]; then
+            log_error "Failed to extract CA certificate"
+        else
+            log_error "CA certificate file is empty"
+        fi
+        return 1
+    fi
+
+    # Get cluster server
+    local cluster_server
+    cluster_server=$(kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.server}')
+
+    # Ensure ~/.kube directory exists with proper permissions
+    mkdir -p ~/.kube
+    chmod 700 ~/.kube
+
+    # Create token-based kubeconfig
+    # Note: CA cert path references /root/.kube/ca.crt (container path)
+    # Docker Compose mounts /tmp/ca.crt (host) -> /root/.kube/ca.crt (container)
+    cat > ~/.kube/config-dot-ai <<EOF
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    certificate-authority: /root/.kube/ca.crt
+    server: ${cluster_server}
+  name: gke-cluster
+contexts:
+- context:
+    cluster: gke-cluster
+    user: dot-ai
+  name: dot-ai-context
+current-context: dot-ai-context
+users:
+- name: dot-ai
+  user:
+    token: $(cat /tmp/dot-ai-token.txt)
+EOF
+
+    log_success "MCP server authentication configured"
+
+    # Set flag to show reminder at the end
+    MCP_CONFIGURED=true
 }
 
 # =============================================================================
@@ -660,7 +853,7 @@ deploy_spider_rainbows_app() {
     log_info "Deploying spider-rainbows application via ArgoCD..."
 
     local app_file
-    app_file="$(dirname "$0")/../gitops/applications/spider-rainbows-app.yaml"
+    app_file="$(dirname "$0")/gitops/applications/spider-rainbows-app.yaml"
 
     if [ ! -f "$app_file" ]; then
         log_error "ArgoCD Application file not found: $app_file"
@@ -874,9 +1067,12 @@ validate_all_components() {
 
 main() {
     echo ""
-    log_info "🕷️  Spider-Rainbows GitOps Demo Setup"
-    log_info "======================================"
+    log_info "🕷️  Spider-Rainbows Demo Setup"
+    log_info "==============================="
     echo ""
+
+    # Initialize MCP configuration flag
+    MCP_CONFIGURED=false
 
     # Prompt for deployment mode
     prompt_deployment_mode
@@ -884,6 +1080,7 @@ main() {
     # Phase 1: Cluster and Ingress
     check_prerequisites
     create_cluster
+    configure_mcp_authentication  # Configure MCP server auth if needed
     install_ingress_controller
 
     # Phase 2: ArgoCD Installation
@@ -938,6 +1135,13 @@ main() {
         log_info "  - Test app at http://spider-rainbows.${BASE_DOMAIN}"
         log_info "  - Make code changes to trigger CI/CD workflow"
         echo ""
+
+        # Show MCP reminder if it was configured
+        if [ "$MCP_CONFIGURED" = true ]; then
+            log_info "⚠️  MCP Server Authentication Updated"
+            log_info "Restart Claude Code to connect dot-ai MCP server to this cluster"
+            echo ""
+        fi
     else
         # Validation failed
         echo ""
@@ -953,6 +1157,15 @@ main() {
         log_info "  kubectl get pods -A"
         log_info "  kubectl get application spider-rainbows -n argocd"
         echo ""
+
+        # Offer cleanup on validation failure
+        read -p "Setup failed. Do you want to cleanup the partial cluster? [y/N]: " cleanup_choice
+        if [[ "$cleanup_choice" =~ ^[Yy]$ ]]; then
+            log_info "Running cleanup..."
+            ./destroy.sh
+        else
+            log_info "Cluster preserved for troubleshooting - run ./destroy.sh when ready"
+        fi
         exit 1
     fi
 }

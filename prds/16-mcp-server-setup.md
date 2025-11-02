@@ -168,69 +168,125 @@ Install and configure the DevOps AI Toolkit MCP server locally, integrate it wit
 ### Milestone 1: MCP Server Installation
 **Goal**: MCP server installed and verified working
 
+**Status**: ✅ Complete
+
 **Tasks**:
-- Clone dot-ai repository
-- Follow MCP Setup Guide installation steps
-- Verify `dot-ai` CLI commands work
-- Test Kubernetes integration with local cluster
+- [x] Download Docker Compose configuration (`docker-compose-dot-ai.yaml`)
+- [x] Configure environment variables (`.env` with ANTHROPIC_API_KEY, OPENAI_API_KEY)
+- [x] Solve GKE authentication issue (gke-gcloud-auth-plugin not in container)
+- [x] Implement service account token authentication for GKE
+- [x] Test Kubernetes integration with GKE cluster
 
 **Success Criteria**:
-- `dot-ai --help` returns version info
-- Can run basic commands: `dot-ai status`, `dot-ai list-tools`
-- MCP server connects to KUBECONFIG cluster
+- [x] MCP server connects to Claude Code
+- [x] Can invoke Kubernetes remediation tools
+- [x] MCP server successfully connects to GKE cluster using token auth
+- [x] `mcp__dot-ai__version` shows "kubernetes.connected: true"
 
 ---
 
 ### Milestone 2: Claude Code Integration
 **Goal**: Claude Code can access MCP server tools
 
+**Status**: ✅ Complete
+
 **Tasks**:
-- Install/configure MCP server for Claude Code
-- Test slash commands from MCP toolkit
-- Verify Kubernetes remediation tools accessible
-- Practice using commands in Claude Code
+- [x] Create `.mcp.json` configuration at project root
+- [x] Configure dot-ai with Docker Compose and `--env-file .env`
+- [x] Fix commit-story MCP server path for this repository
+- [x] Verify all 3 MCP servers connected (commit-story, coderabbitai, dot-ai)
+- [x] Test Kubernetes remediation tools with live GKE cluster
+- [x] Successfully diagnose spider-rainbows app health
 
 **Success Criteria**:
-- Claude Code slash commands work
-- Can invoke Kubernetes issue remediation
-- Tool outputs display correctly in Claude Code
+- [x] `claude mcp list` shows all MCP servers connected
+- [x] Can invoke Kubernetes issue remediation (`mcp__dot-ai__remediate`)
+- [x] Tool outputs display correctly (98% confidence health check completed)
+- [x] MCP server successfully analyzed live GKE cluster
 
 ---
 
-### Milestone 3: Demo Scenario Testing
+### Milestone 2.5: Script Integration & Automation
+**Goal**: Automate MCP authentication for cluster create/destroy workflows
+
+**Status**: ✅ Complete
+
+**Tasks**:
+- [x] Add `configure_mcp_authentication()` function to `setup-platform.sh`
+- [x] Auto-configure service account token auth for GCP clusters
+- [x] Add defensive cleanup for Kind clusters (removes stale GCP config)
+- [x] Add MCP auth cleanup to `destroy.sh`
+- [x] Add Claude Code restart reminders in both scripts
+- [x] Fix setup script issues (ArgoCD branch, paths, wording)
+- [x] Move destroy script from `kind/` to root directory
+
+**Success Criteria**:
+- [x] GCP cluster creation automatically configures MCP authentication
+- [x] Kind cluster creation removes any stale GCP MCP config
+- [x] GCP cluster destruction cleans up MCP auth files
+- [x] Users reminded to restart Claude Code when config changes
+- [x] Script handles GCP→Kind and Kind→GCP transitions correctly
+
+---
+
+### Milestone 3: Documentation
+**Goal**: Document GKE authentication solution and setup process
+
+**Status**: ✅ Complete
+
+**Tasks**:
+- [x] Create comprehensive GKE authentication guide (`docs/mcp-gke-authentication.md`)
+- [x] Document service account token authentication approach
+- [x] Include security considerations and troubleshooting
+- [x] Update main README with MCP server information
+
+**Success Criteria**:
+- [x] Documentation explains the gke-gcloud-auth-plugin problem
+- [x] Step-by-step setup instructions provided
+- [x] Solution is reproducible from documentation
+- [x] README includes MCP server setup overview
+
+---
+
+### Milestone 4: Comprehensive Testing
+**Goal**: Validate MCP server works across all cluster lifecycle scenarios
+
+**Status**: ✅ Complete
+
+**Tasks**:
+- [x] Test: Create GCP cluster → verify MCP authentication configured automatically
+- [x] Test: Destroy GCP cluster → verify MCP cleanup and restart reminder
+- [x] Test: Create Kind cluster → verify symlink created, MCP works
+- [x] Test: Destroy Kind cluster → verify symlink cleanup and restart reminder
+- [x] Test: GCP → Destroy → Kind workflow → verify defensive cleanup removes stale config
+- [x] Test: Kind → Destroy → GCP workflow → verify authentication setup creates new config
+- [x] Test: MCP remediation tools work with both cluster types
+
+**Success Criteria**:
+- [x] All cluster create/destroy scenarios tested successfully
+- [x] MCP server connects correctly after each operation
+- [x] No stale configuration issues (Docker directory problem solved)
+- [x] Claude Code restart reminders appear when needed
+- [x] Defensive cleanup prevents GCP→Kind config conflicts
+
+---
+
+### Milestone 5: Demo Scenario Testing
 **Goal**: Practice Part 4 troubleshooting workflow
 
-**Tasks**:
-- Set up Kind cluster with intentional taint
-- Deploy v3 spider-rainbows app (will fail)
-- Use MCP tools to diagnose taint issue
-- Apply remediation via MCP generated commands
-- Verify app deploys successfully
-- Time the entire workflow
-
-**Success Criteria**:
-- MCP correctly identifies taint/toleration issue
-- Remediation commands work as expected
-- Fix resolves deployment failure
-- Workflow completes in <5 minutes
-
----
-
-### Milestone 4: Rehearsal & Documentation
-**Goal**: Demo workflow smooth and well-practiced
+**Status**: ⏳ Pending (Optional - for actual demo prep)
 
 **Tasks**:
-- Full run-through of Part 4 demo scenario
-- Time each step and refine talking points
-- Create backup slides with screenshots
-- Document commands used during demo
-- Practice natural explanations while running MCP tools
+- [ ] Set up cluster with intentional taint (for failure demo)
+- [ ] Deploy v3 spider-rainbows app (will fail)
+- [ ] Use MCP tools to diagnose taint issue
+- [ ] Apply remediation via MCP-generated commands
+- [ ] Verify app deploys successfully
 
 **Success Criteria**:
-- Demo feels natural and well-paced
-- Presenter confident in tool usage
-- Backup materials ready if needed
-- Workflow timed and rehearsed
+- [ ] MCP correctly identifies taint/toleration issue
+- [ ] Remediation commands work as expected
+- [ ] Fix resolves deployment failure
 
 ---
 
@@ -338,6 +394,43 @@ Install and configure the DevOps AI Toolkit MCP server locally, integrate it wit
 - Initial PRD drafted for MCP server setup
 - Integration with Part 4 demo identified
 - Milestones and practice schedule outlined
+
+### 2025-11-01: Implementation & Comprehensive Testing Complete
+**Duration**: ~6 hours
+**Commits**: 4 commits (90dc2d0, c42e632, 550aa66, a16ea15)
+**Primary Focus**: MCP server integration, GKE authentication, comprehensive testing across cluster lifecycle
+
+**Completed Milestones**:
+- ✅ Milestone 1: MCP Server Installation
+- ✅ Milestone 2: Claude Code Integration
+- ✅ Milestone 2.5: Script Integration & Automation
+- ✅ Milestone 3: Documentation (including README update)
+- ✅ Milestone 4: Comprehensive Testing
+
+**Key Achievements**:
+- Implemented Docker Compose configuration for dot-ai MCP server
+- Solved GKE authentication challenge (gke-gcloud-auth-plugin not available in containers)
+- Created service account token authentication solution
+- Automated MCP authentication in setup/destroy scripts
+- Added defensive cleanup for cluster lifecycle transitions
+- Comprehensive testing across all 7 scenarios (GCP/Kind create/destroy workflows)
+- MCP tools successfully validated with both cluster types (98% confidence analysis)
+
+**Bug Fixes During Testing**:
+- Fixed cluster-config.yaml path (missing `kind/` prefix)
+- Fixed variable reference (MODE → DEPLOYMENT_MODE)
+- Fixed file detection (`-f` → `-e` to handle Docker-created directories)
+- Fixed cleanup commands (`rm -f` → `rm -rf` for all MCP files)
+- Added symlink creation/cleanup for Kind clusters
+
+**Documentation Created**:
+- `docs/mcp-gke-authentication.md` - Comprehensive GKE authentication guide
+- Updated README with MCP server integration section
+- Documented setup, usage, and cleanup workflows
+
+**Next Steps**:
+- Milestone 5 (Demo Scenario Testing) remains optional for actual demo preparation
+- Core MCP integration is production-ready
 
 ---
 
