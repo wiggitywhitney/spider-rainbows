@@ -621,6 +621,10 @@ EOF
     local cluster_server
     cluster_server=$(kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.server}')
 
+    # Ensure ~/.kube directory exists with proper permissions
+    mkdir -p ~/.kube
+    chmod 700 ~/.kube
+
     # Create token-based kubeconfig
     cat > ~/.kube/config-dot-ai <<EOF
 apiVersion: v1
