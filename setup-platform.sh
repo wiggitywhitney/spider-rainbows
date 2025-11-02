@@ -99,6 +99,14 @@ check_kind_prerequisites() {
 
     if ! command -v kubectl &> /dev/null; then
         missing_tools+=("kubectl")
+    else
+        # Check kubectl version (v1.23+ required for MCP token wait functionality)
+        local kubectl_version
+        kubectl_version=$(kubectl version --client -o json 2>/dev/null | grep -o '"minor":"[0-9]*"' | grep -o '[0-9]*' || echo "0")
+        if [ "$kubectl_version" -lt 23 ]; then
+            log_warning "kubectl v1.23+ recommended (you have v1.$kubectl_version)"
+            log_warning "MCP server token authentication may require manual wait times"
+        fi
     fi
 
     if ! command -v docker &> /dev/null; then
@@ -160,6 +168,14 @@ check_gcp_prerequisites() {
     # Check kubectl
     if ! command -v kubectl &> /dev/null; then
         missing_tools+=("kubectl")
+    else
+        # Check kubectl version (v1.23+ required for MCP token wait functionality)
+        local kubectl_version
+        kubectl_version=$(kubectl version --client -o json 2>/dev/null | grep -o '"minor":"[0-9]*"' | grep -o '[0-9]*' || echo "0")
+        if [ "$kubectl_version" -lt 23 ]; then
+            log_warning "kubectl v1.23+ recommended (you have v1.$kubectl_version)"
+            log_warning "MCP server token authentication may require manual wait times"
+        fi
     fi
 
     # Check curl
@@ -596,6 +612,7 @@ EOF
         else
             log_error "Token file is empty - secret may not be ready yet"
         fi
+        return 1
     fi
 
     if [ "$ca_extracted" = false ] || [ "$ca_valid" = false ]; then
@@ -604,16 +621,6 @@ EOF
         else
             log_error "CA certificate file is empty"
         fi
-    fi
-
-    # If all extractions failed, suggest kubectl version check
-    if [ "$token_extracted" = false ] && [ "$ca_extracted" = false ]; then
-        log_error "Troubleshooting: Ensure kubectl v1.23+ is installed (required for --for=jsonpath syntax)"
-        log_error "Check kubectl version with: kubectl version --client"
-    fi
-
-    # Return failure if any validation failed
-    if [ "$token_valid" = false ] || [ "$ca_valid" = false ]; then
         return 1
     fi
 
