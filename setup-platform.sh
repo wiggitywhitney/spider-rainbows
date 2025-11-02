@@ -633,6 +633,8 @@ EOF
     chmod 700 ~/.kube
 
     # Create token-based kubeconfig
+    # Note: CA cert path references /root/.kube/ca.crt (container path)
+    # Docker Compose mounts /tmp/ca.crt (host) -> /root/.kube/ca.crt (container)
     cat > ~/.kube/config-dot-ai <<EOF
 apiVersion: v1
 kind: Config
