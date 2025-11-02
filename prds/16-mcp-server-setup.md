@@ -280,7 +280,7 @@ Install and configure the DevOps AI Toolkit MCP server locally, integrate it wit
 - [ ] Set up cluster with intentional taint (for failure demo)
 - [ ] Deploy v3 spider-rainbows app (will fail)
 - [ ] Use MCP tools to diagnose taint issue
-- [ ] Apply remediation via MCP generated commands
+- [ ] Apply remediation via MCP-generated commands
 - [ ] Verify app deploys successfully
 
 **Success Criteria**:

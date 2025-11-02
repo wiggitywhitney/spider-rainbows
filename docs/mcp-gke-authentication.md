@@ -3,7 +3,7 @@
 ## Problem
 
 GKE kubeconfigs use `gke-gcloud-auth-plugin` which isn't available inside Docker containers, causing:
-```
+```text
 error: "spawn gke-gcloud-auth-plugin ENOENT"
 ```
 

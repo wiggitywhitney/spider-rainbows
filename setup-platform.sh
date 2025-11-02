@@ -366,13 +366,32 @@ create_gke_cluster() {
 }
 
 create_cluster() {
-    # TODO: Add cleanup prompts on cluster creation failure
-    # When Kind/GCP cluster creation fails, prompt: "Cluster creation failed. Do you want to cleanup partial resources? [y/N]"
-    # This prevents users from having to manually run destroy.sh before retrying.
     if [[ "$DEPLOYMENT_MODE" == "kind" ]]; then
-        create_kind_cluster
+        if ! create_kind_cluster; then
+            log_error "Cluster creation failed"
+            echo ""
+            read -p "Do you want to cleanup partial resources? [y/N]: " cleanup_choice
+            if [[ "$cleanup_choice" =~ ^[Yy]$ ]]; then
+                log_info "Running cleanup..."
+                ./destroy.sh
+            else
+                log_info "Skipping cleanup - run ./destroy.sh manually if needed"
+            fi
+            exit 1
+        fi
     elif [[ "$DEPLOYMENT_MODE" == "gcp" ]]; then
-        create_gke_cluster
+        if ! create_gke_cluster; then
+            log_error "Cluster creation failed"
+            echo ""
+            read -p "Do you want to cleanup partial resources? [y/N]: " cleanup_choice
+            if [[ "$cleanup_choice" =~ ^[Yy]$ ]]; then
+                log_info "Running cleanup..."
+                ./destroy.sh
+            else
+                log_info "Skipping cleanup - run ./destroy.sh manually if needed"
+            fi
+            exit 1
+        fi
     else
         log_error "Invalid deployment mode: $DEPLOYMENT_MODE"
         exit 1
@@ -540,7 +559,11 @@ type: kubernetes.io/service-account-token
 EOF
 
     log_info "Waiting for token to be generated..."
-    sleep 3
+    # Wait for secret to be populated (instead of hardcoded sleep)
+    if ! kubectl wait --for=jsonpath='{.data.token}' secret/dot-ai-token -n default --timeout=30s &>/dev/null; then
+        log_warning "Token not immediately available, waiting additional time..."
+        sleep 5
+    fi
 
     # Extract token and CA cert
     kubectl get secret dot-ai-token -n default -o jsonpath='{.data.token}' | base64 -d > /tmp/dot-ai-token.txt
@@ -1073,8 +1096,15 @@ main() {
         log_info "  kubectl get pods -A"
         log_info "  kubectl get application spider-rainbows -n argocd"
         echo ""
-        # TODO: Add interactive prompt: "Setup failed. Do you want to cleanup the partial cluster? [y/N]"
-        # If yes, call destroy.sh automatically. This gives users control while avoiding manual cleanup steps.
+
+        # Offer cleanup on validation failure
+        read -p "Setup failed. Do you want to cleanup the partial cluster? [y/N]: " cleanup_choice
+        if [[ "$cleanup_choice" =~ ^[Yy]$ ]]; then
+            log_info "Running cleanup..."
+            ./destroy.sh
+        else
+            log_info "Cluster preserved for troubleshooting - run ./destroy.sh when ready"
+        fi
         exit 1
     fi
 }
