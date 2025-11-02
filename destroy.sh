@@ -119,7 +119,7 @@ for cluster in "${gcp_clusters[@]}"; do
 
             # Clean up MCP authentication files
             log_info "Cleaning up MCP authentication files..."
-            rm -f ~/.kube/config-dot-ai
+            rm -rf ~/.kube/config-dot-ai
             rm -f /tmp/ca.crt
             rm -f /tmp/dot-ai-token.txt
             log_success "MCP authentication files removed"

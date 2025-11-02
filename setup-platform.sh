@@ -489,9 +489,9 @@ configure_mcp_authentication() {
         log_info "Kind cluster detected - MCP works with default config"
 
         # Defensively remove any stale GCP MCP auth files
-        if [ -f ~/.kube/config-dot-ai ] || [ -f /tmp/ca.crt ] || [ -f /tmp/dot-ai-token.txt ]; then
+        if [ -e ~/.kube/config-dot-ai ] || [ -f /tmp/ca.crt ] || [ -f /tmp/dot-ai-token.txt ]; then
             log_info "Cleaning up stale GCP MCP authentication files..."
-            rm -f ~/.kube/config-dot-ai
+            rm -rf ~/.kube/config-dot-ai
             rm -f /tmp/ca.crt
             rm -f /tmp/dot-ai-token.txt
             log_success "Stale MCP authentication files removed"
