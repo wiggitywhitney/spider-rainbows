@@ -559,15 +559,63 @@ type: kubernetes.io/service-account-token
 EOF
 
     log_info "Waiting for token to be generated..."
-    # Wait for secret to be populated (instead of hardcoded sleep)
+    # Note: kubectl wait --for=jsonpath requires kubectl v1.23+ (Nov 2021)
+    # On older versions, this command will fail silently (error output is suppressed)
+    # and fall back to the 5-second sleep below
     if ! kubectl wait --for=jsonpath='{.data.token}' secret/dot-ai-token -n default --timeout=30s &>/dev/null; then
         log_warning "Token not immediately available, waiting additional time..."
         sleep 5
     fi
 
-    # Extract token and CA cert
-    kubectl get secret dot-ai-token -n default -o jsonpath='{.data.token}' | base64 -d > /tmp/dot-ai-token.txt
-    kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' | base64 -d > /tmp/ca.crt
+    # Extract token and CA cert with error handling
+    log_info "Extracting token and CA certificate..."
+
+    local token_extracted=false
+    local ca_extracted=false
+    local token_valid=false
+    local ca_valid=false
+
+    if kubectl get secret dot-ai-token -n default -o jsonpath='{.data.token}' | base64 -d > /tmp/dot-ai-token.txt; then
+        token_extracted=true
+        if [ -s /tmp/dot-ai-token.txt ]; then
+            token_valid=true
+        fi
+    fi
+
+    if kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' | base64 -d > /tmp/ca.crt; then
+        ca_extracted=true
+        if [ -s /tmp/ca.crt ]; then
+            ca_valid=true
+        fi
+    fi
+
+    # Check for failures and provide appropriate error messages
+    if [ "$token_extracted" = false ] || [ "$token_valid" = false ]; then
+        if [ "$token_extracted" = false ]; then
+            log_error "Failed to extract dot-ai token from secret"
+        else
+            log_error "Token file is empty - secret may not be ready yet"
+        fi
+    fi
+
+    if [ "$ca_extracted" = false ] || [ "$ca_valid" = false ]; then
+        if [ "$ca_extracted" = false ]; then
+            log_error "Failed to extract CA certificate"
+        else
+            log_error "CA certificate file is empty"
+        fi
+    fi
+
+    # If all extractions failed, suggest kubectl version check
+    if [ "$token_extracted" = false ] && [ "$ca_extracted" = false ]; then
+        log_error "Troubleshooting: Ensure kubectl v1.23+ is installed (required for --for=jsonpath syntax)"
+        log_error "Check kubectl version with: kubectl version --client"
+    fi
+
+    # Return failure if any validation failed
+    if [ "$token_valid" = false ] || [ "$ca_valid" = false ]; then
+        return 1
+    fi
 
     # Get cluster server
     local cluster_server
