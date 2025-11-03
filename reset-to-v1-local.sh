@@ -31,7 +31,32 @@ if [ ! -d ".baseline/v1/src/components" ]; then
 fi
 
 # ==============================================================================
-# Copy clean v1 files from baseline
+# Switch to main and clean up feature branch FIRST
+# ==============================================================================
+# IMPORTANT: We must switch to main and clean git state BEFORE doing filesystem
+# operations, otherwise git operations will undo our filesystem changes
+
+V3_BRANCH="feature/v3-scariest-spiders"
+CURRENT_BRANCH=$(git branch --show-current)
+
+if [ "$CURRENT_BRANCH" = "$V3_BRANCH" ]; then
+  echo "  Switching from feature branch to main..."
+  # Clean up git state on feature branch (unstage + discard all changes)
+  git reset HEAD . 2>/dev/null || true
+  git checkout . 2>/dev/null || true
+  git clean -fd 2>/dev/null || true
+  # Switch to main
+  git checkout main 2>/dev/null || git checkout master 2>/dev/null
+fi
+
+# Delete the feature branch if it exists
+if git show-ref --verify --quiet "refs/heads/$V3_BRANCH"; then
+  echo "  Deleting branch $V3_BRANCH..."
+  git branch -D "$V3_BRANCH" 2>/dev/null || true
+fi
+
+# ==============================================================================
+# Copy clean v1 files from baseline (now that we're on main)
 # ==============================================================================
 
 cp .baseline/v1/src/components/SpiderImage.jsx src/components/SpiderImage.jsx
@@ -60,19 +85,6 @@ fi
 
 # Remove generated v3 PRD files (keep original PRD-26)
 find prds -name "*-v3-horrifying-spider-images.md" ! -name "26-v3-horrifying-spider-images.md" -delete 2>/dev/null || true
-
-# Delete v3 feature branch if it exists
-# Branch name is hardcoded to match what develop-next-version.sh creates (line 193)
-# This is safe because the branch name is consistent and predictable
-V3_BRANCH="feature/v3-scariest-spiders"
-if git show-ref --verify --quiet "refs/heads/$V3_BRANCH"; then
-  echo "  Deleting branch $V3_BRANCH..."
-  CURRENT_BRANCH=$(git branch --show-current)
-  if [ "$CURRENT_BRANCH" = "$V3_BRANCH" ]; then
-    git checkout main 2>/dev/null || git checkout master 2>/dev/null
-  fi
-  git branch -D "$V3_BRANCH" 2>/dev/null || true
-fi
 
 # Restore deployment manifest (undo K8s failures)
 if [ -f "gitops/manifests/spider-rainbows/deployment.yaml" ]; then
