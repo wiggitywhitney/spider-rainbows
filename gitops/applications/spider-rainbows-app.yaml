@@ -7,7 +7,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/wiggitywhitney/spider-rainbows.git
-    targetRevision: feature/prd-23-mobile-support-conference-demo
+    targetRevision: main
     path: gitops/manifests/spider-rainbows
   destination:
     server: https://kubernetes.default.svc
