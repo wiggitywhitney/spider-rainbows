@@ -210,7 +210,7 @@ if [ "$NEXT_VERSION" = "3" ]; then
   NEW_ISSUE_NUM=$(gh issue create \
     --title "$ISSUE_TITLE" \
     --body "$ISSUE_BODY" \
-    --label "PRD" 2>&1 | grep -o '#[0-9]*' | tr -d '#')
+    --label "PRD" 2>&1 | grep -oE '[0-9]+$')
 
   if [ -z "$NEW_ISSUE_NUM" ]; then
     echo "❌ Error: Failed to create GitHub issue" >&3
