@@ -16,6 +16,23 @@
 
 ---
 
+## Prerequisites
+
+**Manual Steps (Must be completed before starting implementation)**:
+1. Rename image files:
+   - Current `Spider-v2.png` → `Spider-v1.png`
+   - Current `spidersspidersspiders-v2.png` → `spidersspidersspiders-v1.png`
+   - Current `Spider-v3.png` → `Spider-v2.png`
+   - Current `spidersspidersspiders-v3.png` → `spidersspidersspiders-v2.png`
+2. Remove old v1 files:
+   - Delete `Spider.png`
+   - Delete `spidersspidersspiders.png`
+3. Create and add new v3 artwork (scariest spiders version):
+   - Add `Spider-v3.png`
+   - Add `spidersspidersspiders-v3.png`
+
+---
+
 ## Problem Statement
 
 Part 2 of the conference demo shows the developer experience of using Claude Code with an IDP. When code changes trigger CodeRabbit reviews, the presenter needs realistic issues to remediate. Additionally, v2 version should have narrative storytelling about spider anatomy through code comments.
@@ -195,7 +212,17 @@ Add narrative code comments explaining spider anatomy to v2 components, and stra
 
 ## Milestones
 
-### Milestone 1: Spider Anatomy Comments Written
+### Milestone 1: Prerequisites Complete & Assets Ready
+- [ ] Rename image files (v2→v1, v3→v2)
+- [ ] Remove old v1 files (Spider.png, spidersspidersspiders.png)
+- [ ] Create and add new v3 artwork (scariest spiders version)
+- [ ] Commit asset changes to branch
+
+**Success Criteria**: All spider image assets are properly versioned and committed
+
+---
+
+### Milestone 2: Spider Anatomy Comments Written
 - [ ] Research and write accurate spider anatomy facts
 - [ ] Add educational comments to SpiderImage.jsx (v2 version)
 - [ ] Add educational comments to SurpriseSpider.jsx (v2 version)
@@ -205,7 +232,7 @@ Add narrative code comments explaining spider anatomy to v2 components, and stra
 
 ---
 
-### Milestone 2: Code Quality Issues Introduced
+### Milestone 3: Code Quality Issues Introduced
 - [ ] Create duplicated utility function
 - [ ] Introduce dead code variables/functions
 - [ ] Verify CodeRabbit will flag these issues
@@ -215,7 +242,7 @@ Add narrative code comments explaining spider anatomy to v2 components, and stra
 
 ---
 
-### Milestone 3: Feature Branch Prepared
+### Milestone 4: Feature Branch Prepared
 - [ ] Create feature branch with all v2 changes
 - [ ] Test locally in dev environment
 - [ ] Test in Docker container
@@ -223,28 +250,6 @@ Add narrative code comments explaining spider anatomy to v2 components, and stra
 - [ ] Create draft PR and verify CodeRabbit reviews
 
 **Success Criteria**: Feature branch is production-ready and CodeRabbit findings visible
-
----
-
-### Milestone 4: Demo Workflow Rehearsed
-- [ ] Merge feature branch to main during practice run
-- [ ] Show CodeRabbit findings to "audience"
-- [ ] Remediate issues live using Claude Code
-- [ ] Push fixed code and verify app redeployment
-- [ ] Time the entire workflow
-
-**Success Criteria**: Workflow is smooth, well-timed, and presenter is confident
-
----
-
-### Milestone 5: Production Ready
-- [ ] All tests pass
-- [ ] Feature branch ready to merge on demo day
-- [ ] CodeRabbit findings documented
-- [ ] Remediation steps clear and practiced
-- [ ] Backup plans in place
-
-**Success Criteria**: Ready to execute demo with confidence
 
 ---
 
@@ -300,7 +305,7 @@ const validateSpiderHealth = (spider) => {
 - SpiderImage.jsx (main component)
 - SurpriseSpider.jsx (easter egg component)
 - spiderUtils.js (utility functions)
-- V2 spider images (already exist from PRD #5)
+- Spider images: v1 (cheesy grins, renamed from v2), v2 (scarier, renamed from v3), v3 (scariest, new artwork)
 
 ### Integration with Existing Systems
 - CI/CD pipeline (already configured)
@@ -314,37 +319,36 @@ const validateSpiderHealth = (spider) => {
 
 | Risk | Impact | Likelihood | Mitigation |
 |------|--------|------------|------------|
-| Code duplication breaks app | High | Low | Test thoroughly before demo |
+| Code duplication breaks app | High | Low | Test thoroughly in all environments |
 | CodeRabbit doesn't flag issues | High | Low | Verify findings in draft PR first |
-| Remediation takes >10 minutes | Medium | Medium | Practice remediation steps multiple times |
-| Audience doesn't understand spider facts | Medium | Low | Practice explaining comments naturally |
 | Code review workflow feels forced | Medium | Medium | Make all changes feel organic and realistic |
 
 ---
 
 ## Timeline & Phases
 
-### Phase 1: Planning & Research (Days 1-2)
+### Phase 1: Asset Preparation (Day 1)
+- Rename spider image files
+- Remove old v1 files
+- Create and add new v3 artwork
+- Commit asset changes
+
+### Phase 2: Planning & Research (Day 2)
 - Research spider anatomy facts
 - Plan comment narrative
 - Design duplication strategy
 
-### Phase 2: Implementation (Days 3-4)
+### Phase 3: Implementation (Days 3-4)
 - Write spider anatomy comments
 - Introduce code duplication and dead code
 - Create feature branch
 
-### Phase 3: Testing & Verification (Days 5-6)
+### Phase 4: Testing & Verification (Days 5-6)
 - Test in all environments (dev, Docker, Kind)
 - Verify CodeRabbit findings
 - Create draft PR and review findings
 
-### Phase 4: Practice & Rehearsal (Days 7-10)
-- Multiple practice runs of demo workflow
-- Time remediation process
-- Refine talking points
-
-**Total Estimated Time**: 10 days
+**Total Estimated Time**: 6 days
 
 ---
 
@@ -367,9 +371,6 @@ const validateSpiderHealth = (spider) => {
 
 3. **Dead Code Realism**: Should dead code look like forgotten code or obviously unused?
    - Current plan: Realistic-looking, not obviously fake
-
-4. **Remediation Timing**: How important is keeping remediation under 10 minutes?
-   - Current plan: Critical for demo pacing
 
 ---
 
