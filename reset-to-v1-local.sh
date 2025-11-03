@@ -39,9 +39,17 @@ fi
 V3_BRANCH="feature/v3-scariest-spiders"
 CURRENT_BRANCH=$(git branch --show-current)
 
+# Extract issue number from PRD file BEFORE git clean deletes it
+V3_ISSUE_NUMBER=""
+V3_PRD_FILE=$(find prds -name "*-v3-horrifying-spider-images.md" ! -name "26-v3-horrifying-spider-images.md" 2>/dev/null | head -1)
+if [ -n "$V3_PRD_FILE" ]; then
+  V3_ISSUE_NUMBER=$(basename "$V3_PRD_FILE" | grep -oE '^[0-9]+')
+fi
+
 if [ "$CURRENT_BRANCH" = "$V3_BRANCH" ]; then
   echo "  Switching from feature branch to main..."
   # Clean up git state on feature branch (unstage + discard all changes)
+  # WARNING: git clean will delete the PRD file, so we extracted issue number above
   git reset HEAD . 2>/dev/null || true
   git checkout . 2>/dev/null || true
   git clean -fd 2>/dev/null || true
@@ -69,21 +77,15 @@ cp .baseline/v1/src/components/SurpriseSpider.jsx src/components/SurpriseSpider.
 # Remove v3 utility file
 rm -f src/utils/clickHandlers.js
 
-# Find and clean up v3 GitHub issue (extract number from PRD filename)
-# The develop-next-version.sh script creates a PRD file like "prds/35-v3-horrifying-spider-images.md"
-# We extract the issue number from any such file and clean up the corresponding GitHub issue
-V3_PRD_FILE=$(find prds -name "*-v3-horrifying-spider-images.md" ! -name "26-v3-horrifying-spider-images.md" 2>/dev/null | head -1)
-if [ -n "$V3_PRD_FILE" ]; then
-  # Extract issue number from filename (e.g., "prds/35-v3-horrifying-spider-images.md" -> "35")
-  V3_ISSUE_NUMBER=$(basename "$V3_PRD_FILE" | grep -oE '^[0-9]+')
-  if [ -n "$V3_ISSUE_NUMBER" ] && gh issue view "$V3_ISSUE_NUMBER" &>/dev/null; then
-    echo "  Cleaning up GitHub issue #$V3_ISSUE_NUMBER..."
-    gh issue close "$V3_ISSUE_NUMBER" --reason "not planned" 2>/dev/null || true
-    gh issue delete "$V3_ISSUE_NUMBER" --yes 2>/dev/null || true
-  fi
+# Clean up v3 GitHub issue (using issue number extracted earlier)
+if [ -n "$V3_ISSUE_NUMBER" ] && gh issue view "$V3_ISSUE_NUMBER" &>/dev/null; then
+  echo "  Cleaning up GitHub issue #$V3_ISSUE_NUMBER..."
+  gh issue close "$V3_ISSUE_NUMBER" --reason "not planned" 2>/dev/null || true
+  gh issue delete "$V3_ISSUE_NUMBER" --yes 2>/dev/null || true
 fi
 
 # Remove generated v3 PRD files (keep original PRD-26)
+# Note: This may have already been done by git clean, but we run it again to be thorough
 find prds -name "*-v3-horrifying-spider-images.md" ! -name "26-v3-horrifying-spider-images.md" -delete 2>/dev/null || true
 
 # Restore deployment manifest (undo K8s failures)
