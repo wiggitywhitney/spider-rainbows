@@ -26,14 +26,33 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Detect spider version
+        id: version
+        run: |
+          # Extract version from SpiderImage.jsx (e.g., /Spider-v2.png -> v2)
+          VERSION=$(grep -oP 'Spider-v\K[0-9]+' src/components/SpiderImage.jsx | head -1)
+          if [ -n "$VERSION" ]; then
+            echo "Detected spider version: v${VERSION}"
+            echo "version=v${VERSION}-" >> "$GITHUB_OUTPUT"
+            echo "version_tag=v${VERSION}-" >> "$GITHUB_OUTPUT"
+          else
+            echo "No version detected, will omit version from tag"
+            echo "version=" >> "$GITHUB_OUTPUT"
+            echo "version_tag=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Extract short SHA for GitOps update
+        id: sha
+        run: echo "short_sha=$(echo "${{ github.sha }}" | cut -c1-7)" >> "$GITHUB_OUTPUT"
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY_IMAGE }}
           tags: |
-            type=ref,event=branch
-            type=sha,prefix={{branch}}-
+            type=ref,event=branch,prefix=${{ steps.version.outputs.version_tag }}
+            type=sha,prefix=${{ steps.version.outputs.version_tag }}{{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Docker image
@@ -49,23 +68,6 @@ jobs:
 
       - name: Image digest
         run: echo "Image pushed with digest ${{ steps.meta.outputs.digest }}"
-
-      - name: Extract short SHA for GitOps update
-        id: sha
-        run: echo "short_sha=$(echo "${{ github.sha }}" | cut -c1-7)" >> "$GITHUB_OUTPUT"
-
-      - name: Detect spider version
-        id: version
-        run: |
-          # Extract version from SpiderImage.jsx (e.g., /Spider-v2.png -> v2)
-          VERSION=$(grep -oP 'Spider-v\K[0-9]+' src/components/SpiderImage.jsx | head -1)
-          if [ -n "$VERSION" ]; then
-            echo "Detected spider version: v${VERSION}"
-            echo "version=v${VERSION}-" >> "$GITHUB_OUTPUT"
-          else
-            echo "No version detected, will omit version from tag"
-            echo "version=" >> "$GITHUB_OUTPUT"
-          fi
 
       - name: Update GitOps manifests
         env:
