@@ -11,8 +11,8 @@
   padding: 10px 21px;
   font-size: 31px;
   color: black;
-  background-color: white;
-  border: 2px solid white;
+  background-color: transparent;
+  border: none;
   border-radius: 5px;
   cursor: pointer;
   font-family: 'SpiderFont', sans-serif;
@@ -42,17 +42,19 @@
 .add-spider-button:focus,
 .add-spider-button:active {
   outline: none !important;
-  border-color: white !important;
+  border: none !important;
   box-shadow: none;
 }
 
 .black-outline {
+  background-color: white;
   box-shadow: 0 0 0 2px black;
 }
 
 .add-spider-button.black-outline:hover,
 .add-spider-button.black-outline:focus,
 .add-spider-button.black-outline:active {
+  background-color: white;
   box-shadow: 0 0 0 2px black;
 }
 
