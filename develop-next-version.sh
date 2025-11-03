@@ -208,7 +208,14 @@ if [ "$NEXT_VERSION" = "3" ]; then
     exit 1
   fi
 
-  echo "  ✓ main branch is clean"
+  # Verify v2 images are present (positive check)
+  if ! grep -q "Spider-v2\.png" src/components/SpiderImage.jsx; then
+    echo "❌ Error: main branch does not have v2 images" >&3
+    echo "   Expected to find Spider-v2.png reference in SpiderImage.jsx" >&3
+    exit 1
+  fi
+
+  echo "  ✓ main branch is clean v2"
 
   # Step 1: Reset to v1 baseline
   echo "Step 1: Resetting to v1 baseline..."
@@ -221,6 +228,18 @@ if [ "$NEXT_VERSION" = "3" ]; then
 
   # Step 2: Update images to v2 (defines clean v2 baseline)
   echo "Step 2: Establishing clean v2 baseline..."
+
+  # Verify v2 image files exist before updating references
+  if [ ! -f "public/Spider-v2.png" ]; then
+    echo "❌ Error: Spider-v2.png not found in public directory" >&3
+    exit 1
+  fi
+
+  if [ ! -f "public/spidersspidersspiders-v2.png" ]; then
+    echo "❌ Error: spidersspidersspiders-v2.png not found in public directory" >&3
+    exit 1
+  fi
+
   sed -i.bak 's|src="/Spider-v1\.png"|src="/Spider-v2.png"|' src/components/SpiderImage.jsx
   rm src/components/SpiderImage.jsx.bak
 
@@ -239,22 +258,37 @@ if [ "$NEXT_VERSION" = "3" ]; then
   ISSUE_TITLE=$(gh issue view 26 --json title -q .title 2>&1)
   echo "  Issue title: $ISSUE_TITLE"
 
-  ISSUE_BODY=$(gh issue view 26 --json body -q .body 2>&1 | sed 's/ (Required for conference demo)//')
-  echo "  Removed demo reference from body"
-
+  # Validate title was fetched successfully
   if [ -z "$ISSUE_TITLE" ]; then
     echo "❌ Error: Could not fetch issue #26. Is gh CLI authenticated?" >&3
     exit 1
   fi
 
-  NEW_ISSUE_NUM=$(gh issue create \
+  # Fetch body and remove demo reference
+  ORIGINAL_BODY=$(gh issue view 26 --json body -q .body 2>&1)
+  ISSUE_BODY=$(echo "$ORIGINAL_BODY" | sed 's/ (Required for conference demo)//')
+
+  # Validate sed pattern worked (body should have changed)
+  if [ "$ORIGINAL_BODY" = "$ISSUE_BODY" ]; then
+    echo "⚠️  Warning: Demo reference pattern not found in issue body" >&3
+    echo "  Proceeding with original body"
+  else
+    echo "  Removed demo reference from body"
+  fi
+
+  # Capture full gh output for debugging
+  GH_CREATE_OUTPUT=$(gh issue create \
     --title "$ISSUE_TITLE" \
     --body "$ISSUE_BODY" \
-    --label "PRD" 2>&1 | grep -oE '[0-9]+$')
+    --label "PRD" 2>&1)
 
-  if [ -z "$NEW_ISSUE_NUM" ]; then
-    echo "❌ Error: Failed to create GitHub issue" >&3
-    echo "  Last gh output captured in log"
+  # Extract issue number from output
+  NEW_ISSUE_NUM=$(echo "$GH_CREATE_OUTPUT" | grep -oE '[0-9]+$')
+
+  # Validate issue number is numeric
+  if [ -z "$NEW_ISSUE_NUM" ] || ! [[ "$NEW_ISSUE_NUM" =~ ^[0-9]+$ ]]; then
+    echo "❌ Error: Failed to create GitHub issue or parse issue number" >&3
+    echo "  gh output: $GH_CREATE_OUTPUT" >&3
     exit 1
   fi
   echo "  Created issue #$NEW_ISSUE_NUM"
@@ -262,6 +296,13 @@ if [ "$NEXT_VERSION" = "3" ]; then
   # Step 5: Copy PRD-26 to new PRD file with updated issue number
   echo "Step 5: Generating PRD file..."
   NEW_PRD_FILE="prds/${NEW_ISSUE_NUM}-v3-horrifying-spider-images.md"
+
+  # Verify source PRD exists
+  if [ ! -f "prds/26-v3-horrifying-spider-images.md" ]; then
+    echo "❌ Error: Source PRD file not found: prds/26-v3-horrifying-spider-images.md" >&3
+    exit 1
+  fi
+
   cp prds/26-v3-horrifying-spider-images.md "$NEW_PRD_FILE"
   echo "  Copied PRD-26 to $NEW_PRD_FILE"
 
@@ -269,6 +310,19 @@ if [ "$NEXT_VERSION" = "3" ]; then
   sed -i.bak "s|#26|#${NEW_ISSUE_NUM}|g" "$NEW_PRD_FILE"
   sed -i.bak "s|issues/26|issues/${NEW_ISSUE_NUM}|g" "$NEW_PRD_FILE"
   rm "${NEW_PRD_FILE}.bak"
+
+  # Validate sed replacements occurred
+  if grep -q "#26" "$NEW_PRD_FILE" || grep -q "issues/26" "$NEW_PRD_FILE"; then
+    echo "❌ Error: Failed to update all issue references in PRD" >&3
+    echo "  File still contains #26 or issues/26" >&3
+    exit 1
+  fi
+
+  if ! grep -q "#${NEW_ISSUE_NUM}" "$NEW_PRD_FILE"; then
+    echo "❌ Error: New issue number #${NEW_ISSUE_NUM} not found in PRD" >&3
+    exit 1
+  fi
+
   echo "  Updated issue references in PRD"
 
   # Update GitHub issue with PRD link
@@ -284,7 +338,18 @@ if [ "$NEXT_VERSION" = "3" ]; then
   echo "  Cherry-picking commit 1b0bcc1..."
 
   # Cherry-pick may have PRD conflicts (expected - we discard those changes)
-  git cherry-pick 1b0bcc1 --no-commit 2>&1 || true
+  # Capture output and exit code to distinguish between expected and unexpected failures
+  CHERRY_PICK_OUTPUT=$(git cherry-pick 1b0bcc1 --no-commit 2>&1) || CHERRY_PICK_STATUS=$?
+
+  # If cherry-pick failed, verify it's only due to conflicts (not other git errors)
+  if [ "${CHERRY_PICK_STATUS:-0}" -ne 0 ]; then
+    # Check if working directory is clean (no conflicts) - this would indicate a different error
+    if ! git diff --name-only --diff-filter=U &>/dev/null; then
+      echo "❌ Error: Cherry-pick failed with non-conflict error:" >&3
+      echo "$CHERRY_PICK_OUTPUT" >&3
+      exit 1
+    fi
+  fi
 
   # Check if there are conflicts in files OTHER than the PRD
   CONFLICTS=$(git diff --name-only --diff-filter=U 2>&1 || true)
@@ -304,7 +369,16 @@ if [ "$NEXT_VERSION" = "3" ]; then
   git add -u 2>&1  # Stage all other changes
 
   echo "  Cherry-picking commit b74dbf2..."
-  git cherry-pick b74dbf2 --no-commit 2>&1 || true
+  CHERRY_PICK_OUTPUT=$(git cherry-pick b74dbf2 --no-commit 2>&1) || CHERRY_PICK_STATUS=$?
+
+  # If cherry-pick failed, verify it's only due to conflicts
+  if [ "${CHERRY_PICK_STATUS:-0}" -ne 0 ]; then
+    if ! git diff --name-only --diff-filter=U &>/dev/null; then
+      echo "❌ Error: Cherry-pick failed with non-conflict error:" >&3
+      echo "$CHERRY_PICK_OUTPUT" >&3
+      exit 1
+    fi
+  fi
 
   # Check for non-PRD conflicts again
   CONFLICTS=$(git diff --name-only --diff-filter=U 2>&1 || true)
@@ -333,14 +407,35 @@ if [ "$NEXT_VERSION" = "3" ]; then
     sed -i.bak 's|memory: "[^"]*"|memory: "10Gi"|' gitops/manifests/spider-rainbows/deployment.yaml
     sed -i.bak 's|cpu: "[^"]*"|cpu: "4000m"|' gitops/manifests/spider-rainbows/deployment.yaml
 
+    # Validate resource over-allocation succeeded
+    if ! grep -q 'memory: "10Gi"' gitops/manifests/spider-rainbows/deployment.yaml; then
+      echo "❌ Error: Failed to over-allocate memory in deployment.yaml" >&3
+      exit 1
+    fi
+    if ! grep -q 'cpu: "4000m"' gitops/manifests/spider-rainbows/deployment.yaml; then
+      echo "❌ Error: Failed to over-allocate CPU in deployment.yaml" >&3
+      exit 1
+    fi
+
     echo "  Layer 3: Breaking liveness probe..."
     sed -i.bak 's|path: /health|path: /healthz|' gitops/manifests/spider-rainbows/deployment.yaml
     sed -i.bak 's|port: 8080|port: 9090|' gitops/manifests/spider-rainbows/deployment.yaml
 
+    # Validate liveness probe breaking succeeded
+    if ! grep -q 'path: /healthz' gitops/manifests/spider-rainbows/deployment.yaml; then
+      echo "❌ Error: Failed to break liveness probe path in deployment.yaml" >&3
+      exit 1
+    fi
+    if ! grep -q 'port: 9090' gitops/manifests/spider-rainbows/deployment.yaml; then
+      echo "❌ Error: Failed to break liveness probe port in deployment.yaml" >&3
+      exit 1
+    fi
+
     rm gitops/manifests/spider-rainbows/deployment.yaml.bak
     echo "  K8s failures injected successfully"
   else
-    echo "  Warning: deployment.yaml not found"
+    echo "❌ Error: deployment.yaml not found at gitops/manifests/spider-rainbows/" >&3
+    exit 1
   fi
 
   echo ""
