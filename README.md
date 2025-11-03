@@ -80,17 +80,27 @@ ArgoCD automatically:
 
 New spider version appears instantly! 🎉
 
-### Reset to v1
+### Reset Scripts
 
+**Local reset only** (for development/testing):
 ```bash
-./reset-to-v1.sh  # Back to baseline (no teeth)
+./reset-to-v1-local.sh
 ```
+Resets component files to v1 baseline using `.baseline/v1/` directory. Cleans up feature branches, GitHub issues, K8s taints, and deployment manifests. Does NOT build/push Docker images or commit changes.
+
+**Full reset with deployment** (after conference demos):
+```bash
+./reset-to-v1-and-deploy.sh
+```
+Complete reset + build + push + deploy workflow. Calls `reset-to-v1-local.sh`, builds Docker image, pushes to DockerHub, commits to main, triggers ArgoCD deployment. **Must be on main branch.**
 
 ### Cleanup
 
+**Destroy infrastructure:**
 ```bash
 ./destroy.sh
 ```
+Tears down Kind/GKE cluster and cleans up all cloud resources.
 
 ---
 
