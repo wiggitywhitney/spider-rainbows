@@ -207,8 +207,8 @@ gh pr merge --squash  # or via GitHub UI
 
 **Open the demo PRD**:
 ```bash
-# Show prds/demo-scariest-spiders.md
-cat prds/demo-scariest-spiders.md
+# Show prds/26-v3-horrifying-spider-images.md
+cat prds/26-v3-horrifying-spider-images.md
 ```
 
 **Explain to audience**:
