@@ -1,8 +1,39 @@
 #!/bin/bash
 set -euo pipefail
 
+# Cleanup function to remove backup files on error
+cleanup() {
+  rm -f src/components/*.jsx.bak
+  rm -f server.js.bak
+}
+trap cleanup EXIT
+
 echo "💻 Developing new feature..."
 echo ""
+
+# ==============================================================================
+# Verify we're in the right directory
+# ==============================================================================
+
+if [ ! -f "package.json" ] || [ ! -d "src/components" ]; then
+  echo "❌ Error: Must run this script from the repository root"
+  echo "   Expected to find: package.json and src/components/"
+  exit 1
+fi
+
+# ==============================================================================
+# Verify required files exist
+# ==============================================================================
+
+if [ ! -f "src/components/SpiderImage.jsx" ]; then
+  echo "❌ Error: src/components/SpiderImage.jsx not found"
+  exit 1
+fi
+
+if [ ! -f "src/components/SurpriseSpider.jsx" ]; then
+  echo "❌ Error: src/components/SurpriseSpider.jsx not found"
+  exit 1
+fi
 
 # Find all available version numbers
 VERSIONS=$(ls public/Spider-v*.png 2>/dev/null | sed 's/.*Spider-v\([0-9]*\)\.png/\1/' | sort -n)
@@ -13,13 +44,29 @@ if [ -z "$VERSIONS" ]; then
 fi
 
 # Detect current version by checking what's in SpiderImage.jsx
-CURRENT_SRC=$(grep 'src="' src/components/SpiderImage.jsx | sed 's/.*src="\([^"]*\)".*/\1/')
+CURRENT_SRC=$(grep 'src="' src/components/SpiderImage.jsx 2>/dev/null) || {
+  echo "❌ Could not detect current version from SpiderImage.jsx"
+  exit 1
+}
+
+CURRENT_SRC=$(echo "$CURRENT_SRC" | sed 's/.*src="\([^"]*\)".*/\1/')
 CURRENT_VERSION=$(echo "$CURRENT_SRC" | sed 's/.*Spider-v\([0-9]*\)\.png/\1/')
+
+# Validate CURRENT_VERSION is a number
+if ! [[ "$CURRENT_VERSION" =~ ^[0-9]+$ ]]; then
+  echo "❌ Could not parse version number from: $CURRENT_SRC"
+  exit 1
+fi
 
 # Find next version
 NEXT_VERSION=""
 FOUND_CURRENT=false
 for v in $VERSIONS; do
+  # Validate v is a number before comparison
+  if ! [[ "$v" =~ ^[0-9]+$ ]]; then
+    continue
+  fi
+
   if [ "$FOUND_CURRENT" = true ]; then
     NEXT_VERSION=$v
     break

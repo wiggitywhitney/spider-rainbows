@@ -308,11 +308,11 @@ Add comments about "wildly scariest spider image yet" and introduce cascading Ku
 
 **Demo Context**: See [DEMO-FLOW.md Part 2](../DEMO-FLOW.md#part-2-v1--v2-code-quality-issues) for how this integrates into the conference demo.
 
-- [ ] User writes spider anatomy comments (100% user-provided content)
-- [ ] Update `develop-next-version.sh` to add user-provided comments to SpiderImage.jsx (v2 version)
-- [ ] Update `develop-next-version.sh` to add user-provided comments to SurpriseSpider.jsx (v2 version)
-- [ ] Comments tie to v2 image appearance
-- [ ] Script replaces fake credentials approach with duplicated code + dead/uninitialized variables
+- [x] User writes spider anatomy comments (100% user-provided content)
+- [x] Update `develop-next-version.sh` to add user-provided comments to SpiderImage.jsx (v2 version)
+- [x] Update `develop-next-version.sh` to add user-provided comments to SurpriseSpider.jsx (v2 version)
+- [x] Comments tie to v2 image appearance
+- [x] Script replaces fake credentials approach with duplicated code + dead/uninitialized variables
 
 **Success Criteria**: Script automates v1→v2 transition with comments and code issues that trigger CodeRabbit
 
@@ -322,13 +322,14 @@ Add comments about "wildly scariest spider image yet" and introduce cascading Ku
 
 **Demo Context**: This milestone supports [DEMO-FLOW.md Part 2](../DEMO-FLOW.md#part-2-v1--v2-code-quality-issues) - the developer workflow demonstration.
 
-- [ ] Modify `develop-next-version.sh` v2 section to remove fake credentials logic
-- [ ] Add user-provided spider anatomy comments injection
-- [ ] Add duplicated code injection
-- [ ] Add dead/uninitialized variables injection
-- [ ] Keep existing width bug logic (spider scale 0.50 instead of 0.25)
-- [ ] Script creates feature branch automatically
-- [ ] Test script execution locally
+- [x] Modify `develop-next-version.sh` v2 section to remove fake credentials logic
+- [x] Add user-provided spider anatomy comments injection
+- [x] Add duplicated code injection
+- [x] Add dead/uninitialized variables injection
+- [x] Keep existing width bug logic (spider scale 0.50 instead of 0.25)
+- [x] Script creates feature branch automatically
+- [x] Test script execution locally
+- [x] Full cycle test passed (v1→v2→v1)
 
 **Success Criteria**: Script successfully generates v1→v2 transition with all intended issues
 
@@ -604,6 +605,48 @@ sed -i 's/port: 8080/port: 9090/' gitops/manifests/spider-rainbows/deployment.ya
 ---
 
 ## Progress Log
+
+### 2025-11-03: Milestones 1-3 Complete - V2 Script Implementation
+- **Completed Milestones**: Asset preparation, comment writing, v2 script implementation
+- **Testing**: Full v1→v2→v1 cycle passed successfully
+- **Progress**: 50% complete (16 of 32 milestone items)
+
+**Milestone 1: Asset Preparation** ✅
+- Renamed all spider images to proper versions (v2→v1, v3→v2)
+- Added new v3 artwork (different dimensions noted for testing)
+- Committed all asset changes to feature branch
+
+**Milestone 2: Spider Anatomy Comments** ✅
+- User-provided spider anatomy comments integrated into script
+- Comments explain why v1 was anatomically incorrect (spiders don't have teeth)
+- Both SpiderImage and SurpriseSpider components receive appropriate comments
+
+**Milestone 3: V2 Script Implementation** ✅
+- Replaced fake credentials with realistic code quality issues
+- Added duplicated calculateSpiderPosition function (intentionally unused)
+- Added dead variables: unusedSpiderCount (initialized to 0), spiderAnimationFrame (uninitialized)
+- Width bug maintained (0.50 instead of 0.25) to cause test failures
+- Full cycle test: v1→v2→v1 successful
+
+**Additional Work - Script Quality Improvements**:
+- Split reset script into two distinct scripts:
+  - `reset-to-v1-local.sh` - Fast local reset for development/testing
+  - `reset-to-v1-and-deploy.sh` - Full deployment reset with Docker build/push
+- Removed old `reset-to-v1.sh` (replaced by new scripts)
+- Added CodeRabbit-proofing to all scripts:
+  - File existence checks before operations
+  - Working directory validation
+  - Cleanup traps for .bak files
+  - Error handling with `||` pattern instead of `$?`
+  - Input validation (version numbers, grep results)
+- Added Git SHA tagging for immutable image tags (follows existing pattern)
+- Added comprehensive docstrings explaining purpose, when to use, what it does
+- Applied DRY principle: deploy script calls local script
+
+**Next Steps**:
+- Commit all script changes to feature branch
+- Create PR for asset + script changes
+- Proceed to Milestone 4: V3 Script Implementation
 
 ### 2025-11-03: Merged PRD 15 into PRD 14
 - **Decision**: Consolidate all demo requirements into single PRD
