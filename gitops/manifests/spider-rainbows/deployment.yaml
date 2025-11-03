@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: spider-rainbows
-        image: wiggitywhitney/spider-rainbows:main-10f1f3e
+        image: wiggitywhitney/spider-rainbows:v2-main-f240f82
         ports:
         - containerPort: 8080
           name: http
