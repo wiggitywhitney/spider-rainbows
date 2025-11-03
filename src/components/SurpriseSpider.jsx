@@ -7,8 +7,6 @@ const SurpriseSpider = ({ rainbowWidth }) => {
 
   return (
     <div className="surprise-spider-container">
-      {/* Again, spiders DO NOT HAVE TEETH. */}
-      {/* They slurp up fly-soup through little mouth-straws! */}
       <img
         src="/spidersspidersspiders-v2.png"
         alt="Surprise Spiders"
