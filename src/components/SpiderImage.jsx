@@ -1,20 +1,17 @@
 import './SpiderImage.css';
+import { createClickZoneHandler } from '../utils/clickHandlers';
 
 const SpiderImage = ({ rainbowWidth }) => {
   const spiderWidth = rainbowWidth * 0.25;
 
-  const handleSpiderClick = (event) => {
-    const container = event.currentTarget;
-    const rect = container.getBoundingClientRect();
-    const clickY = event.clientY - rect.top;
-    const clickPercentage = (clickY / rect.height) * 100;
-
-    if (clickPercentage < 50) {
-      window.open('https://www.youtube.com/@wiggitywhitney', '_blank', 'noopener,noreferrer');
+  const handleSpiderClick = createClickZoneHandler((x, y) => {
+    // Top/bottom split: top 50% vs bottom 50%
+    if (y < 50) {
+      return 'https://www.youtube.com/@wiggitywhitney';
     } else {
-      window.open('https://www.youtube.com/@DevOpsToolkit', '_blank', 'noopener,noreferrer');
+      return 'https://www.youtube.com/@DevOpsToolkit';
     }
-  };
+  });
 
   return (
     <div

@@ -262,7 +262,7 @@ Add inline comments explaining:
 ## Open Questions
 
 ~~1. **Multiple Spider Click Zones**: What should the click zone layout be for `spidersspidersspiders-v3.png`?~~
-   - **RESOLVED**: Quadrants (Q1/Q3 → DevOps Toolkit, Q2/Q4 → Wiggity)
+   - **RESOLVED**: Quadrants (Q1/Q4 → DevOps Toolkit, Q2/Q3 → Wiggity)
 
 ~~2. **Visual Feedback**: Should there be any visual indication of clickable regions beyond cursor change?~~
    - **RESOLVED**: Cursor change only, no other hover effects
