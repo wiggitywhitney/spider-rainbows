@@ -270,27 +270,44 @@ if [ "$NEXT_VERSION" = "3" ]; then
   # Step 6: Cherry-pick v3 commits (selective files only)
   echo "Step 6: Cherry-picking v3 implementation..."
   echo "  Cherry-picking commit 1b0bcc1..."
-  git cherry-pick 1b0bcc1 --no-commit 2>&1 || {
-    echo "❌ Error: Cherry-pick failed for commit 1b0bcc1" >&3
-    echo "  See log for details"
+
+  # Cherry-pick may have PRD conflicts (expected - we discard those changes)
+  git cherry-pick 1b0bcc1 --no-commit 2>&1 || true
+
+  # Check if there are conflicts in files OTHER than the PRD
+  CONFLICTS=$(git diff --name-only --diff-filter=U 2>&1 || true)
+  NON_PRD_CONFLICTS=$(echo "$CONFLICTS" | grep -v "prds/26-v3-horrifying-spider-images.md" || true)
+
+  if [ -n "$NON_PRD_CONFLICTS" ]; then
+    echo "❌ Error: Cherry-pick has conflicts in non-PRD files:" >&3
+    echo "$NON_PRD_CONFLICTS" >&3
+    echo "  This suggests main branch is not in a clean v2 state" >&3
     exit 1
-  }
+  fi
 
   # Remove PRD changes from staging (we already copied it with new issue number)
   echo "  Removing PRD from staging..."
   git reset HEAD prds/26-v3-horrifying-spider-images.md 2>&1 || true
   git checkout -- prds/26-v3-horrifying-spider-images.md 2>&1 || true
+  git add -u 2>&1  # Stage all other changes
 
   echo "  Cherry-picking commit b74dbf2..."
-  git cherry-pick b74dbf2 --no-commit 2>&1 || {
-    echo "❌ Error: Cherry-pick failed for commit b74dbf2" >&3
-    echo "  See log for details"
+  git cherry-pick b74dbf2 --no-commit 2>&1 || true
+
+  # Check for non-PRD conflicts again
+  CONFLICTS=$(git diff --name-only --diff-filter=U 2>&1 || true)
+  NON_PRD_CONFLICTS=$(echo "$CONFLICTS" | grep -v "prds/26-v3-horrifying-spider-images.md" || true)
+
+  if [ -n "$NON_PRD_CONFLICTS" ]; then
+    echo "❌ Error: Cherry-pick has conflicts in non-PRD files:" >&3
+    echo "$NON_PRD_CONFLICTS" >&3
     exit 1
-  }
+  fi
 
   # Remove PRD changes from staging
   git reset HEAD prds/26-v3-horrifying-spider-images.md 2>&1 || true
   git checkout -- prds/26-v3-horrifying-spider-images.md 2>&1 || true
+  git add -u 2>&1  # Stage all other changes
   echo "  Cherry-pick complete"
 
   # Step 7: Inject K8s failures
