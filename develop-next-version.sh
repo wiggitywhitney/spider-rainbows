@@ -138,16 +138,51 @@ const calculateSpiderPosition = (index, total) => {\
   rm src/components/SpiderImage.jsx.bak
 fi
 
-# Version 3 specific: Add memory allocation to server.js
+# ==============================================================================
+# Version 3 specific: Reset to v1, then establish clean v2 baseline
+# ==============================================================================
+# IMPORTANT: DO NOT DELETE THIS SECTION
+#
+# This section ensures v3 development starts from a consistent CLEAN v2 baseline.
+# By the time we reach v3, Part 2 of the demo has already occurred, where bugs
+# were manually fixed. However, we cannot guarantee bugs were fixed in exactly
+# the same way each demo run, so we enforce a clean baseline here.
+#
+# Strategy:
+#   1. Run reset-to-v1-local.sh to get completely clean v1 state
+#   2. Change image sources from v1 to v2 (this defines clean v2 baseline)
+#   3. Cherry-pick v3 commits on top of clean v2
+#   4. Inject K8s failures
+#
+# This approach guarantees consistency regardless of how Part 2 demo was executed.
+# ==============================================================================
 if [ "$NEXT_VERSION" = "3" ]; then
-  sed -i.bak '/const __dirname = path.dirname(__filename)/a\
-\
-const memoryHog = []\
-for (let i = 0; i < 30; i++) {\
-  memoryHog.push(new Array(10 * 1024 * 1024).fill('\''X'\''))\
-}
-' server.js
-  rm server.js.bak
+  # Step 1: Reset to v1 baseline (silently)
+  if [ -f "./reset-to-v1-local.sh" ]; then
+    ./reset-to-v1-local.sh > /dev/null 2>&1
+  else
+    echo "❌ Error: reset-to-v1-local.sh not found"
+    exit 1
+  fi
+
+  # Step 2: Update images to v2 (defines clean v2 baseline)
+  sed -i.bak 's|src="/Spider-v1\.png"|src="/Spider-v2.png"|' src/components/SpiderImage.jsx
+  rm src/components/SpiderImage.jsx.bak
+
+  sed -i.bak 's|src="/spidersspidersspiders-v1\.png"|src="/spidersspidersspiders-v2.png"|' src/components/SurpriseSpider.jsx
+  rm src/components/SurpriseSpider.jsx.bak
+
+  # TODO: Add v3 development automation here (PRD 27)
+  # This will include:
+  #   - Creating new GitHub issue
+  #   - Generating PRD file
+  #   - Cherry-picking v3 commits from main branch history
+  #   - Injecting K8s failures (taints, resource over-allocation, broken probes)
+  # See: prds/27-v3-demo-automation.md
+
+  echo "⚠️  V3 automation not yet implemented (PRD 27)"
+  echo "    For now, manually implement v3 features on a feature branch"
+  exit 0
 fi
 
 # Update SpiderImage.jsx - change image source
