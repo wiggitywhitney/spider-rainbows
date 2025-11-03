@@ -6,7 +6,8 @@ set -euo pipefail
 
 BRANCH="feature/prd-23-mobile-support-conference-demo"
 IMAGE_BASE="wiggitywhitney/spider-rainbows"
-TAG_SUFFIX="${1:-$(date +%H%M%S)}"
+# Always use unique timestamp-based tag to avoid caching issues
+TAG_SUFFIX="$(date +%Y%m%d-%H%M%S)"
 IMAGE_TAG="prd-23-${TAG_SUFFIX}"
 FULL_IMAGE="${IMAGE_BASE}:${IMAGE_TAG}"
 
@@ -25,12 +26,9 @@ if [ "$CURRENT_BRANCH" != "$BRANCH" ]; then
     fi
 fi
 
-# Build and push image
-echo "🐳 Building Docker image..."
-docker build -t "${FULL_IMAGE}" .
-
-echo "📤 Pushing to Docker Hub..."
-docker push "${FULL_IMAGE}"
+# Build and push multi-platform image
+echo "🐳 Building multi-platform Docker image (amd64 + arm64)..."
+docker buildx build --platform linux/amd64,linux/arm64 -t "${FULL_IMAGE}" --push .
 
 # Update deployment manifest
 echo "📝 Updating deployment.yaml..."
