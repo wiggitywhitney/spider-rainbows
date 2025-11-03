@@ -1,6 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
+# Add Google Cloud SDK to PATH for gke-gcloud-auth-plugin
+# This ensures kubectl can authenticate to GKE clusters in all execution contexts
+GCLOUD_SDK_ROOT=$(gcloud info --format="value(installation.sdk_root)" 2>/dev/null || echo "")
+if [ -n "$GCLOUD_SDK_ROOT" ] && [ -d "$GCLOUD_SDK_ROOT/bin" ]; then
+  export PATH="$GCLOUD_SDK_ROOT/bin:$PATH"
+fi
+
 # Setup logging
 # File descriptor 3: Console output (user sees this)
 # File descriptor 1: Log file (everything goes here)
