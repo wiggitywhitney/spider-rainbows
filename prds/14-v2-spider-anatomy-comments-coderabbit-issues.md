@@ -298,6 +298,8 @@ Add comments about "wildly scariest spider image yet" and introduce cascading Ku
 - [ ] Create and add new v3 artwork (scariest spiders version)
 - [ ] Commit asset changes to branch
 
+**Important Note**: V3 spider image has different dimensions than v1/v2. Extra testing required during v3 implementation to ensure proper display and scaling.
+
 **Success Criteria**: All spider image assets are properly versioned and committed
 
 ---
@@ -345,6 +347,9 @@ Add comments about "wildly scariest spider image yet" and introduce cascading Ku
 - [ ] Add sed/yaml modification to break liveness probe (path: `/healthz`, port: `9090`)
 - [ ] Script creates feature branch automatically
 - [ ] Test script execution with active cluster
+- [ ] Test v3 spider image display and scaling (v3 has different dimensions than v1/v2)
+
+**Important Note**: V3 spider image has different dimensions than v1/v2. Test carefully to ensure proper display.
 
 **Success Criteria**: Script successfully generates v2→v3 transition with demo PRD and all 3 K8s failures
 
