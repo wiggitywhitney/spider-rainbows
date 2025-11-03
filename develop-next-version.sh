@@ -1,8 +1,39 @@
 #!/bin/bash
 set -euo pipefail
 
+# Cleanup function to remove backup files on error
+cleanup() {
+  rm -f src/components/*.jsx.bak
+  rm -f server.js.bak
+}
+trap cleanup EXIT
+
 echo "💻 Developing new feature..."
 echo ""
+
+# ==============================================================================
+# Verify we're in the right directory
+# ==============================================================================
+
+if [ ! -f "package.json" ] || [ ! -d "src/components" ]; then
+  echo "❌ Error: Must run this script from the repository root"
+  echo "   Expected to find: package.json and src/components/"
+  exit 1
+fi
+
+# ==============================================================================
+# Verify required files exist
+# ==============================================================================
+
+if [ ! -f "src/components/SpiderImage.jsx" ]; then
+  echo "❌ Error: src/components/SpiderImage.jsx not found"
+  exit 1
+fi
+
+if [ ! -f "src/components/SurpriseSpider.jsx" ]; then
+  echo "❌ Error: src/components/SurpriseSpider.jsx not found"
+  exit 1
+fi
 
 # Find all available version numbers
 VERSIONS=$(ls public/Spider-v*.png 2>/dev/null | sed 's/.*Spider-v\([0-9]*\)\.png/\1/' | sort -n)
@@ -13,13 +44,29 @@ if [ -z "$VERSIONS" ]; then
 fi
 
 # Detect current version by checking what's in SpiderImage.jsx
-CURRENT_SRC=$(grep 'src="' src/components/SpiderImage.jsx | sed 's/.*src="\([^"]*\)".*/\1/')
+CURRENT_SRC=$(grep 'src="' src/components/SpiderImage.jsx 2>/dev/null) || {
+  echo "❌ Could not detect current version from SpiderImage.jsx"
+  exit 1
+}
+
+CURRENT_SRC=$(echo "$CURRENT_SRC" | sed 's/.*src="\([^"]*\)".*/\1/')
 CURRENT_VERSION=$(echo "$CURRENT_SRC" | sed 's/.*Spider-v\([0-9]*\)\.png/\1/')
+
+# Validate CURRENT_VERSION is a number
+if ! [[ "$CURRENT_VERSION" =~ ^[0-9]+$ ]]; then
+  echo "❌ Could not parse version number from: $CURRENT_SRC"
+  exit 1
+fi
 
 # Find next version
 NEXT_VERSION=""
 FOUND_CURRENT=false
 for v in $VERSIONS; do
+  # Validate v is a number before comparison
+  if ! [[ "$v" =~ ^[0-9]+$ ]]; then
+    continue
+  fi
+
   if [ "$FOUND_CURRENT" = true ]; then
     NEXT_VERSION=$v
     break
@@ -42,23 +89,52 @@ echo "🔨 Implementing changes..."
 echo "📝 Updating assets..."
 sleep 1
 
-# Version 2 specific: Add config file with secrets and width bug
+# Version 2 specific: Add spider anatomy comments, code issues, and width bug
 if [ "$NEXT_VERSION" = "2" ]; then
-  cat > config.js << 'EOF'
-// API Configuration
-export const API_KEY = "sk-1234567890abcdef1234567890abcdef1234567890abcdef";
-export const AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY";
-export const GITHUB_TOKEN = "ghp_1234567890abcdefghijklmnopqrstuvwxyz";
-export const DATABASE_PASSWORD = "MyS3cr3tP@ssw0rd!2024";
-export const JWT_SECRET = "super-secret-jwt-signing-key-do-not-share";
+  # Add spider anatomy comment to SpiderImage.jsx (before the img tag)
+  sed -i.bak '/<img$/i\
+      {/* Version one of this drawing is preposterous. */}\
+      {/* Spiders do not smile. They don'\''t have teeth. They don'\''t even have jaws. */}\
+      {/*  */}\
+      {/* Spiders only consume liquid. Their mouths are basically straws. */}\
+      {/* Here'\''s how it works: spiders use their fangs to inject digestive enzymes */}\
+      {/* into their prey — say, a fly. The fly dissolves into a "soup" of tissue. */}\
+      {/* Then the spider slurps up the fly-soup through its little mouth-straw. */}\
+      {/*  */}\
+      {/* Many species have hair-covered mouthparts that act as filters, */}\
+      {/* keeping out solid chunks. Because they CANNOT CHEW. */}\
+      {/*  */}\
+      {/* Teeth. Ridiculous. */}\
+' src/components/SpiderImage.jsx
+  rm src/components/SpiderImage.jsx.bak
 
-// Webhook secrets
-export const SLACK_WEBHOOK_URL = "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXX";
-export const DISCORD_WEBHOOK_TOKEN = "1234567890123456789.ABCDEF.ghijklmnopqrstuvwxyz1234567890";
-EOF
+  # Add spider anatomy comment to SurpriseSpider.jsx (before the img tag)
+  sed -i.bak '/<img$/i\
+      {/* Again, spiders DO NOT HAVE TEETH. */}\
+      {/* They slurp up fly-soup through little mouth-straws! */}\
+' src/components/SurpriseSpider.jsx
+  rm src/components/SurpriseSpider.jsx.bak
 
   # Introduce width bug
   sed -i.bak 's|const spiderWidth = rainbowWidth \* 0.25|const spiderWidth = rainbowWidth * 0.50|' src/components/SpiderImage.jsx
+  rm src/components/SpiderImage.jsx.bak
+
+  # Add duplicated code - duplicate the calculatePosition function in SpiderImage.jsx
+  sed -i.bak '/^const SpiderImage/i\
+// Helper function to calculate spider position\
+const calculateSpiderPosition = (index, total) => {\
+  const angle = (index / total) * Math.PI * 2;\
+  return { x: Math.cos(angle), y: Math.sin(angle) };\
+};\
+\
+' src/components/SpiderImage.jsx
+  rm src/components/SpiderImage.jsx.bak
+
+  # Add dead/uninitialized variables in SpiderImage.jsx
+  sed -i.bak '/^const SpiderImage/a\
+  const unusedSpiderCount = 0;\
+  let spiderAnimationFrame;\
+' src/components/SpiderImage.jsx
   rm src/components/SpiderImage.jsx.bak
 fi
 

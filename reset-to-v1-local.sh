@@ -1,8 +1,71 @@
 #!/bin/bash
+################################################################################
+# reset-to-v1-local.sh
+#
+# PURPOSE:
+#   Resets local component files back to v1 baseline state by removing all
+#   v2/v3 changes (comments, duplicated code, dead variables, bugs).
+#
+# WHEN TO USE:
+#   - During development when testing v1→v2→v1 transitions
+#   - When practicing demo flow and need to reset quickly
+#   - Anytime you want to reset files WITHOUT deploying
+#
+# WHAT IT DOES:
+#   - Removes v2/v3 spider anatomy comments from components
+#   - Removes duplicated calculateSpiderPosition function
+#   - Removes dead variables (unusedSpiderCount, spiderAnimationFrame)
+#   - Fixes width bug (0.50 → 0.25)
+#   - Resets image sources to v1
+#   - Removes any v2/v3 artifact files (config.js)
+#   - Verifies reset was successful
+#
+# WHAT IT DOES NOT DO:
+#   - Does NOT build Docker images
+#   - Does NOT push to DockerHub
+#   - Does NOT commit or push to git
+#   - Does NOT trigger ArgoCD deployment
+#
+# USAGE:
+#   ./reset-to-v1-local.sh
+#
+################################################################################
+
 set -euo pipefail
 
-echo "🔄 Resetting to baseline..."
+# Cleanup function to remove backup files on error
+cleanup() {
+  rm -f src/components/*.jsx.bak
+  rm -f config.js.bak
+}
+trap cleanup EXIT
+
+echo "🔄 Resetting local files to v1 baseline..."
 echo ""
+
+# ==============================================================================
+# Verify we're in the right directory
+# ==============================================================================
+
+if [ ! -f "package.json" ] || [ ! -d "src/components" ]; then
+  echo "❌ Error: Must run this script from the repository root"
+  echo "   Expected to find: package.json and src/components/"
+  exit 1
+fi
+
+# ==============================================================================
+# Verify required files exist
+# ==============================================================================
+
+if [ ! -f "src/components/SpiderImage.jsx" ]; then
+  echo "❌ Error: src/components/SpiderImage.jsx not found"
+  exit 1
+fi
+
+if [ ! -f "src/components/SurpriseSpider.jsx" ]; then
+  echo "❌ Error: src/components/SurpriseSpider.jsx not found"
+  exit 1
+fi
 
 # ==============================================================================
 # SpiderImage.jsx - Remove v2/v3 changes
@@ -65,6 +128,7 @@ if grep -q "Spider-v1.png" src/components/SpiderImage.jsx && \
   echo "  ✅ SpiderImage.jsx reset to v1"
 else
   echo "  ❌ SpiderImage.jsx may not be at v1"
+  exit 1
 fi
 
 # Check SurpriseSpider.jsx
@@ -73,31 +137,12 @@ if grep -q "spidersspidersspiders-v1.png" src/components/SurpriseSpider.jsx && \
   echo "  ✅ SurpriseSpider.jsx reset to v1"
 else
   echo "  ❌ SurpriseSpider.jsx may not be at v1"
+  exit 1
 fi
 
 echo ""
-
-# Build Docker image
-echo "🐳 Building Docker image..."
-docker build -t wiggitywhitney/spider-rainbows:v1-baseline .
-
-# Push to DockerHub
-echo "📤 Pushing to DockerHub..."
-docker push wiggitywhitney/spider-rainbows:v1-baseline
-
-echo "✅ Docker image built and pushed: wiggitywhitney/spider-rainbows:v1-baseline"
+echo "✅ Local files reset to v1 baseline!"
 echo ""
-
+echo "NOTE: This was a LOCAL reset only."
+echo "      No Docker build, git commit, or deployment occurred."
 echo ""
-echo "📤 Committing and pushing to trigger GitHub Actions..."
-git add .
-git commit --allow-empty -m "chore: trigger workflow - deploy v1-baseline image"
-git push origin main
-
-echo ""
-echo "✅ Reset to v1 complete!"
-echo "   Docker image: wiggitywhitney/spider-rainbows:v1-baseline"
-echo ""
-echo "GitHub Actions workflow will now:"
-echo "  1. Update GitOps repo with v1-baseline image"
-echo "  2. ArgoCD will sync and deploy v1 spiders"

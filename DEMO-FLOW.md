@@ -516,8 +516,19 @@ kubectl get application spider-rainbows -n argocd
 
 **Optional**: Clean up demo resources
 
-CREATE A SCRIPT THAT REVERTS BACK TO V1
-update ./reset-to-v1
+### Reset to V1 Baseline
+
+**Option 1: Local Reset Only** (fast, no deployment)
+```bash
+./reset-to-v1-local.sh
+```
+Use this during development or practice runs to quickly reset files without Docker operations.
+
+**Option 2: Full Reset with Deployment** (builds Docker image, deploys v1)
+```bash
+./reset-to-v1-and-deploy.sh
+```
+Use this after the actual demo to reset and redeploy v1 to production.
 
 ### Destroy Cluster
 ```bash
