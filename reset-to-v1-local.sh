@@ -36,6 +36,7 @@ fi
 # IMPORTANT: We must switch to main and clean git state BEFORE doing filesystem
 # operations, otherwise git operations will undo our filesystem changes
 
+V2_BRANCH="feature/no-spider-teeth"
 V3_BRANCH="feature/v3-scariest-spiders"
 CURRENT_BRANCH=$(git branch --show-current)
 
@@ -46,7 +47,8 @@ if [ -n "$V3_PRD_FILE" ]; then
   V3_ISSUE_NUMBER=$(basename "$V3_PRD_FILE" | grep -oE '^[0-9]+')
 fi
 
-if [ "$CURRENT_BRANCH" = "$V3_BRANCH" ]; then
+# Handle v2 or v3 feature branches
+if [ "$CURRENT_BRANCH" = "$V2_BRANCH" ] || [ "$CURRENT_BRANCH" = "$V3_BRANCH" ]; then
   echo "  Switching from feature branch to main..."
   # Clean up git state on feature branch (unstage + discard all changes)
   # WARNING: git clean will delete the PRD file, so we extracted issue number above
@@ -57,7 +59,11 @@ if [ "$CURRENT_BRANCH" = "$V3_BRANCH" ]; then
   git checkout main 2>/dev/null || git checkout master 2>/dev/null
 fi
 
-# Delete the feature branch if it exists
+# Delete feature branches if they exist
+if git show-ref --verify --quiet "refs/heads/$V2_BRANCH"; then
+  echo "  Deleting branch $V2_BRANCH..."
+  git branch -D "$V2_BRANCH" 2>/dev/null || true
+fi
 if git show-ref --verify --quiet "refs/heads/$V3_BRANCH"; then
   echo "  Deleting branch $V3_BRANCH..."
   git branch -D "$V3_BRANCH" 2>/dev/null || true

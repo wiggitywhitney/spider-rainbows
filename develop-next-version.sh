@@ -102,6 +102,11 @@ sleep 1
 
 # Version 2 specific: Add spider anatomy comments, code issues, and width bug
 if [ "$NEXT_VERSION" = "2" ]; then
+  # Create feature branch for v2
+  V2_BRANCH="feature/no-spider-teeth"
+  git checkout -b "$V2_BRANCH" 2>&1 || git checkout "$V2_BRANCH" 2>&1
+  echo "  Branch: $V2_BRANCH"
+
   # Add spider anatomy comment to SpiderImage.jsx (before the img tag)
   sed -i.bak '/<img$/i\
       {/* Version one of this drawing is preposterous. */}\
