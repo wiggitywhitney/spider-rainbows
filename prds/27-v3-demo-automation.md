@@ -1,6 +1,6 @@
 # PRD: V3 Demo Automation Infrastructure
 
-**Status**: Planning
+**Status**: In Progress
 **Priority**: High
 **GitHub Issue**: [#27](https://github.com/wiggitywhitney/spider-rainbows/issues/27)
 **Created**: 2025-11-03
@@ -704,6 +704,86 @@ Multiple reset cycles to verify idempotence and reliability.
 - 7 major milestones identified
 - Risk assessment completed
 - Ready to begin implementation once PRD-26 is merged and reverted
+
+### 2025-11-03: Implementation Progress (~85% Complete)
+
+**Note**: Milestones NOT marked complete due to incomplete K8s integration (Layer 1 kubectl taints require GKE auth configuration).
+
+**Working Components**:
+
+1. **Git Strategy**:
+   - PRD-26 merged to main (commits 1b0bcc1, b74dbf2)
+   - Verified cherry-pick works correctly
+   - Main branch maintains clean v2 state
+
+2. **Baseline Directory System**:
+   - Created `.baseline/v1/` with canonical v1 component files
+   - Enables idempotent reset operations
+   - Verified files restore correctly
+
+3. **develop-next-version.sh V3 Section**:
+   - ✅ Creates feature branch: `feature/v3-scariest-spiders`
+   - ✅ Verifies main branch is in clean v2 state before proceeding
+   - ✅ Creates new GitHub issue (copies issue #26, removes demo reference)
+   - ✅ Generates PRD file with updated issue number references
+   - ✅ Cherry-picks v3 commits (1b0bcc1, b74dbf2) with intelligent conflict handling
+   - ✅ Allows expected PRD conflicts, fails on unexpected conflicts
+   - ✅ K8s Layer 2: Over-allocates resources (10Gi memory, 4000m CPU)
+   - ✅ K8s Layer 3: Breaks liveness probe (wrong path `/healthz`, wrong port 9090)
+   - ⚠️ K8s Layer 1: kubectl taint command fails gracefully (GKE auth not configured)
+   - Tested successfully: v2 → v3 transition creates issue, PRD, code, K8s failures (Layers 2 & 3)
+
+4. **develop-next-version.sh V2 Section**:
+   - ✅ Creates feature branch: `feature/no-spider-teeth`
+   - Ensures consistent branch workflow across versions
+
+5. **reset-to-v1-local.sh Extensions**:
+   - ✅ Extracts v3 issue number dynamically from PRD filename
+   - ✅ Closes and deletes GitHub issue automatically
+   - ✅ Cleans up both v2 and v3 feature branches
+   - ✅ Removes v3 artifacts (clickHandlers.js, generated PRDs)
+   - ✅ Restores deployment manifest (undoes K8s Layers 2 & 3)
+   - ⚠️ kubectl untaint command fails gracefully (GKE auth not configured)
+   - **Critical fix**: Reordered operations to clean git state BEFORE filesystem operations
+   - **Critical fix**: Extracts issue number BEFORE git clean deletes PRD file
+   - Tested successfully: Complete cleanup from v3 → v1
+
+6. **End-to-End Testing**:
+   - ✅ v2 → v3 automation: Successfully creates issue, PRD, feature branch, v3 code, K8s failures
+   - ✅ v3 → v1 reset: Successfully cleans all artifacts, deletes branches, closes issues
+   - ✅ Multiple reset cycles confirmed idempotent behavior
+   - ✅ Scripts handle edge cases gracefully (missing files, already-deleted branches, etc.)
+
+**Deferred to Future Milestone**:
+
+- **K8s Layer 1 (Node Taints)**: `kubectl taint` command requires GKE authentication setup
+  - Current behavior: Command fails gracefully, doesn't break script execution
+  - Layers 2 & 3 still work correctly (manifest edits are filesystem operations)
+  - Decision: Two-layer cascading failures sufficient for demo, Layer 1 enhancement deferred
+  - Future work: Configure GKE auth plugin to enable kubectl cluster operations
+
+**Technical Patterns Established**:
+
+- **Git State Management**: Clean git state (reset/checkout/clean) BEFORE filesystem operations
+- **Dynamic Resource Extraction**: Pattern-match filenames to extract metadata (issue numbers)
+- **Cherry-Pick Conflict Handling**: Allow expected conflicts, fail fast on unexpected conflicts
+- **Graceful Degradation**: kubectl commands fail gracefully when cluster unavailable
+- **Idempotent Operations**: All cleanup scripts safe to run multiple times
+
+**Key Implementation Details**:
+
+- V3 commit SHAs documented in develop-next-version.sh: 1b0bcc1, b74dbf2
+- Issue template dynamically extracted from issue #26 each run
+- Helper script approach abandoned in favor of integrated implementation in main scripts
+- All operations logged to `develop-next-version.log` for troubleshooting
+
+**Next Steps**:
+
+1. Configure GKE authentication (gcloud auth login, kubectl context setup)
+2. Test kubectl taint/untaint operations with cluster access
+3. Validate K8s Layer 1 behavior in demo flow
+4. Full dress rehearsal with `/prd-done` workflow and MCP dot-ai integration
+5. Mark milestones complete after K8s integration verified
 
 ---
 
