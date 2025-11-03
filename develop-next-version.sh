@@ -172,16 +172,79 @@ if [ "$NEXT_VERSION" = "3" ]; then
   sed -i.bak 's|src="/spidersspidersspiders-v1\.png"|src="/spidersspidersspiders-v2.png"|' src/components/SurpriseSpider.jsx
   rm src/components/SurpriseSpider.jsx.bak
 
-  # TODO: Add v3 development automation here (PRD 27)
-  # This will include:
-  #   - Creating new GitHub issue
-  #   - Generating PRD file
-  #   - Cherry-picking v3 commits from main branch history
-  #   - Injecting K8s failures (taints, resource over-allocation, broken probes)
-  # See: prds/27-v3-demo-automation.md
+  # Step 3: Create feature branch
+  FEATURE_BRANCH="feature/v3-scariest-spiders"
+  git checkout -b "$FEATURE_BRANCH" > /dev/null 2>&1 || git checkout "$FEATURE_BRANCH" > /dev/null 2>&1
 
-  echo "⚠️  V3 automation not yet implemented (PRD 27)"
-  echo "    For now, manually implement v3 features on a feature branch"
+  # Step 4: Create new GitHub issue (copy issue #26, remove demo reference)
+  ISSUE_TITLE=$(gh issue view 26 --json title -q .title 2>/dev/null)
+  ISSUE_BODY=$(gh issue view 26 --json body -q .body 2>/dev/null | sed 's/ (Required for conference demo)//')
+
+  if [ -z "$ISSUE_TITLE" ]; then
+    echo "❌ Error: Could not fetch issue #26. Is gh CLI authenticated?"
+    exit 1
+  fi
+
+  NEW_ISSUE_NUM=$(gh issue create \
+    --title "$ISSUE_TITLE" \
+    --body "$ISSUE_BODY" \
+    --label "PRD" 2>/dev/null | grep -o '#[0-9]*' | tr -d '#')
+
+  if [ -z "$NEW_ISSUE_NUM" ]; then
+    echo "❌ Error: Failed to create GitHub issue"
+    exit 1
+  fi
+
+  # Step 5: Copy PRD-26 to new PRD file with updated issue number
+  NEW_PRD_FILE="prds/${NEW_ISSUE_NUM}-v3-horrifying-spider-images.md"
+  cp prds/26-v3-horrifying-spider-images.md "$NEW_PRD_FILE"
+
+  # Update issue number references in PRD
+  sed -i.bak "s|#26|#${NEW_ISSUE_NUM}|g" "$NEW_PRD_FILE"
+  sed -i.bak "s|issues/26|issues/${NEW_ISSUE_NUM}|g" "$NEW_PRD_FILE"
+  rm "${NEW_PRD_FILE}.bak"
+
+  # Update GitHub issue with PRD link
+  UPDATED_BODY="${ISSUE_BODY}
+
+**Detailed PRD**: See [prds/${NEW_ISSUE_NUM}-v3-horrifying-spider-images.md](https://github.com/wiggitywhitney/spider-rainbows/blob/main/prds/${NEW_ISSUE_NUM}-v3-horrifying-spider-images.md)"
+
+  gh issue edit "$NEW_ISSUE_NUM" --body "$UPDATED_BODY" > /dev/null 2>&1
+
+  # Step 6: Cherry-pick v3 commits (selective files only)
+  git cherry-pick 1b0bcc1 --no-commit > /dev/null 2>&1 || {
+    echo "❌ Error: Cherry-pick failed for commit 1b0bcc1"
+    exit 1
+  }
+
+  # Remove PRD changes from staging (we already copied it with new issue number)
+  git reset HEAD prds/26-v3-horrifying-spider-images.md > /dev/null 2>&1 || true
+  git checkout -- prds/26-v3-horrifying-spider-images.md > /dev/null 2>&1 || true
+
+  git cherry-pick b74dbf2 --no-commit > /dev/null 2>&1 || {
+    echo "❌ Error: Cherry-pick failed for commit b74dbf2"
+    exit 1
+  }
+
+  # Remove PRD changes from staging
+  git reset HEAD prds/26-v3-horrifying-spider-images.md > /dev/null 2>&1 || true
+  git checkout -- prds/26-v3-horrifying-spider-images.md > /dev/null 2>&1 || true
+
+  # Step 7: Inject K8s failures
+  kubectl taint nodes --all demo=scary:NoSchedule > /dev/null 2>&1 || true
+
+  # Layer 2: Over-allocate resources in deployment manifest
+  if [ -f "gitops/manifests/spider-rainbows/deployment.yaml" ]; then
+    sed -i.bak 's|memory: "[^"]*"|memory: "10Gi"|' gitops/manifests/spider-rainbows/deployment.yaml
+    sed -i.bak 's|cpu: "[^"]*"|cpu: "4000m"|' gitops/manifests/spider-rainbows/deployment.yaml
+
+    # Layer 3: Break liveness probe
+    sed -i.bak 's|path: /health|path: /healthz|' gitops/manifests/spider-rainbows/deployment.yaml
+    sed -i.bak 's|port: 8080|port: 9090|' gitops/manifests/spider-rainbows/deployment.yaml
+
+    rm gitops/manifests/spider-rainbows/deployment.yaml.bak
+  fi
+
   exit 0
 fi
 
