@@ -516,7 +516,7 @@ kubectl get application spider-rainbows -n argocd
 
 **Optional**: Clean up demo resources
 
-CREATE A SCRIPT THAT REVERTS BACK TO V1
+TODO: CREATE A SCRIPT THAT REVERTS BACK TO V1
 update ./reset-to-v1
 
 ### Destroy Cluster
