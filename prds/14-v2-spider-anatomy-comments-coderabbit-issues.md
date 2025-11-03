@@ -293,10 +293,10 @@ Add comments about "wildly scariest spider image yet" and introduce cascading Ku
 ## Milestones
 
 ### Milestone 1: Prerequisites Complete & Assets Ready
-- [ ] Rename image files (v2→v1, v3→v2)
-- [ ] Remove old v1 files (Spider.png, spidersspidersspiders.png)
-- [ ] Create and add new v3 artwork (scariest spiders version)
-- [ ] Commit asset changes to branch
+- [x] Rename image files (v2→v1, v3→v2)
+- [x] Remove old v1 files (Spider.png, spidersspidersspiders.png)
+- [x] Create and add new v3 artwork (scariest spiders version)
+- [x] Commit asset changes to branch
 
 **Important Note**: V3 spider image has different dimensions than v1/v2. Extra testing required during v3 implementation to ensure proper display and scaling.
 
