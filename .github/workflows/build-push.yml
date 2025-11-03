@@ -54,10 +54,23 @@ jobs:
         id: sha
         run: echo "short_sha=$(echo "${{ github.sha }}" | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
+      - name: Detect spider version
+        id: version
+        run: |
+          # Extract version from SpiderImage.jsx (e.g., /Spider-v2.png -> v2)
+          VERSION=$(grep -oP 'Spider-v\K[0-9]+' src/components/SpiderImage.jsx | head -1)
+          if [ -n "$VERSION" ]; then
+            echo "Detected spider version: v${VERSION}"
+            echo "version=v${VERSION}-" >> "$GITHUB_OUTPUT"
+          else
+            echo "No version detected, will omit version from tag"
+            echo "version=" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Update GitOps manifests
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          IMAGE_TAG: main-${{ steps.sha.outputs.short_sha }}
+          IMAGE_TAG: ${{ steps.version.outputs.version }}main-${{ steps.sha.outputs.short_sha }}
         run: |
           echo "Updating GitOps manifests with new image tag..."
           echo "Target image tag: $IMAGE_TAG"
