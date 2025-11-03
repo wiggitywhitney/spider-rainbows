@@ -170,6 +170,34 @@ fi
 if [ "$NEXT_VERSION" = "3" ]; then
   echo "Detected v3 development workflow"
 
+  # Verify main branch is in clean v2 state before proceeding
+  echo "Verifying main branch state..."
+  CURRENT_BRANCH=$(git branch --show-current)
+  if [ "$CURRENT_BRANCH" != "main" ]; then
+    echo "❌ Error: Must be on 'main' branch to run v3 automation" >&3
+    echo "   Current branch: $CURRENT_BRANCH" >&3
+    exit 1
+  fi
+
+  # Check if component files match clean v2 baseline expectations
+  # The baseline files should be simple with no extra helper functions, comments, or artifacts
+  if grep -q "calculateSpiderPosition\|handleSpiderClick\|unusedSpiderCount" src/components/SpiderImage.jsx; then
+    echo "❌ Error: main branch has artifacts and is not in clean v2 state" >&3
+    echo "" >&3
+    echo "   To fix this, run:" >&3
+    echo "   1. ./reset-to-v1-local.sh" >&3
+    echo "   2. Update image names from v1 to v2" >&3
+    echo "   3. Commit the clean v2 baseline to main" >&3
+    echo "" >&3
+    echo "   Or if main is already committed with artifacts, you need to:" >&3
+    echo "   1. Run reset script" >&3
+    echo "   2. Update to v2 images" >&3
+    echo "   3. Commit with: git commit -am 'chore: establish clean v2 baseline'" >&3
+    exit 1
+  fi
+
+  echo "  ✓ main branch is clean"
+
   # Step 1: Reset to v1 baseline
   echo "Step 1: Resetting to v1 baseline..."
   if [ -f "./reset-to-v1-local.sh" ]; then
