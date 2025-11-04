@@ -247,6 +247,12 @@ if [ "$NEXT_VERSION" = "3" ]; then
   rm src/components/SurpriseSpider.jsx.bak
   echo "  v2 baseline established"
 
+  # Commit the clean v2 baseline on main
+  echo "  Committing v2 baseline to main..."
+  git add src/components/SpiderImage.jsx src/components/SurpriseSpider.jsx
+  git commit -m "chore: establish clean v2 baseline for v3 development"
+  echo "  v2 baseline committed"
+
   # Step 3: Create feature branch
   echo "Step 3: Creating feature branch..."
   FEATURE_BRANCH="feature/v3-scariest-spiders"
