@@ -720,6 +720,48 @@ configure_argocd_sync_interval() {
     log_success "ArgoCD application controller restarted"
 }
 
+configure_argocd_webhook_secret() {
+    log_info "Configuring ArgoCD webhook secret for instant GitHub sync..."
+
+    # Generate a secure random webhook secret
+    local webhook_secret
+    webhook_secret=$(openssl rand -base64 32)
+
+    # Add webhook secret to argocd-secret
+    kubectl patch secret argocd-secret -n argocd --type=strategic \
+        -p "{\"stringData\":{\"webhook.github.secret\":\"$webhook_secret\"}}"
+
+    log_success "ArgoCD webhook secret configured"
+
+    # Restart argocd-server to apply the new setting
+    log_info "Restarting ArgoCD server..."
+    kubectl rollout restart deployment argocd-server -n argocd
+
+    # Wait for the restart to complete
+    kubectl rollout status deployment argocd-server -n argocd --timeout=120s
+
+    log_success "ArgoCD server restarted"
+
+    # Save webhook secret to .env file
+    local env_file=".env"
+    if grep -q "^ARGOCD_WEBHOOK_SECRET=" "$env_file" 2>/dev/null; then
+        # Update existing entry
+        sed -i.bak "s|^ARGOCD_WEBHOOK_SECRET=.*|ARGOCD_WEBHOOK_SECRET=$webhook_secret|" "$env_file"
+        rm -f "${env_file}.bak"
+    else
+        # Append new entry
+        echo "" >> "$env_file"
+        echo "# ArgoCD Webhook Secret for GitHub instant sync" >> "$env_file"
+        echo "ARGOCD_WEBHOOK_SECRET=$webhook_secret" >> "$env_file"
+    fi
+
+    log_success "Webhook secret saved to $env_file"
+
+    # Store webhook secret for display at the end
+    WEBHOOK_SECRET="$webhook_secret"
+    WEBHOOK_URL="http://argocd.${BASE_DOMAIN}/api/webhook"
+}
+
 install_argocd_ingress() {
     log_info "Installing ArgoCD ingress..."
 
@@ -1090,6 +1132,7 @@ main() {
     install_argocd
     configure_argocd_password
     configure_argocd_sync_interval
+    configure_argocd_webhook_secret
     install_argocd_ingress
     validate_argocd_health
 
@@ -1126,6 +1169,13 @@ main() {
         log_info "  URL: https://argocd.${BASE_DOMAIN}"
         log_info "  Username: admin"
         log_info "  Password: admin123"
+        echo ""
+        log_info "GitHub Webhook Configuration (for instant sync):"
+        log_info "  Webhook URL: ${WEBHOOK_URL}"
+        log_info "  Secret: ${WEBHOOK_SECRET}"
+        log_info "  Content type: application/json"
+        log_info "  Events: Push events"
+        log_info "  Configure at: https://github.com/wiggitywhitney/spider-rainbows/settings/hooks"
         echo ""
         log_info "Spider-Rainbows App:"
         log_info "  URL: http://spider-rainbows.${BASE_DOMAIN}"
