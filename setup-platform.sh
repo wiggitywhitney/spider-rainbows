@@ -127,6 +127,12 @@ check_kind_prerequisites() {
         exit 1
     fi
 
+    # Check for recommended tools
+    if ! command -v gh &> /dev/null; then
+        log_warning "GitHub CLI (gh) not found - webhook will need manual setup"
+        log_info "Install from: https://cli.github.com/"
+    fi
+
     # Check if Docker daemon is running
     if ! docker ps &> /dev/null; then
         log_error "Docker daemon is not running"
@@ -215,6 +221,12 @@ check_gcp_prerequisites() {
         log_info "Install gcloud: https://cloud.google.com/sdk/docs/install"
         log_info "Install gke-gcloud-auth-plugin: gcloud components install gke-gcloud-auth-plugin"
         exit 1
+    fi
+
+    # Check for recommended tools
+    if ! command -v gh &> /dev/null; then
+        log_warning "GitHub CLI (gh) not found - webhook will need manual setup"
+        log_info "Install from: https://cli.github.com/"
     fi
 
     # Check gcloud authentication
@@ -780,9 +792,35 @@ configure_argocd_webhook_secret() {
 
     log_success "Webhook secret saved to $env_file"
 
-    # Store webhook secret for display at the end
+    # Store webhook configuration for display at the end
     WEBHOOK_SECRET="$webhook_secret"
     WEBHOOK_URL="https://argocd.${BASE_DOMAIN}/api/webhook"
+
+    # Create GitHub webhook
+    log_info "Creating GitHub webhook for instant ArgoCD sync..."
+
+    if ! command -v gh &> /dev/null; then
+        log_warning "GitHub CLI (gh) not found - skipping webhook creation"
+        log_info "Install gh CLI and manually create webhook at:"
+        log_info "  https://github.com/wiggitywhitney/spider-rainbows/settings/hooks"
+        return
+    fi
+
+    # Create webhook using gh API
+    gh api repos/wiggitywhitney/spider-rainbows/hooks -X POST -f name=web \
+        -f config[url]="$WEBHOOK_URL" \
+        -f config[content_type]=json \
+        -f config[insecure_ssl]=0 \
+        -f config[secret]="$WEBHOOK_SECRET" \
+        -F events[]=push \
+        -F active=true || {
+        log_warning "Failed to create GitHub webhook"
+        log_info "You may need to create it manually at:"
+        log_info "  https://github.com/wiggitywhitney/spider-rainbows/settings/hooks"
+        return
+    }
+
+    log_success "GitHub webhook created successfully"
 }
 
 install_argocd_ingress() {
@@ -1200,12 +1238,19 @@ main() {
         log_info "  Username: admin"
         log_info "  Password: admin123"
         echo ""
-        log_info "GitHub Webhook Configuration (for instant sync):"
-        log_info "  Webhook URL: ${WEBHOOK_URL}"
-        log_info "  Secret: (stored in .env file - see ARGOCD_WEBHOOK_SECRET)"
-        log_info "  Content type: application/json"
-        log_info "  Events: Push events"
-        log_info "  Configure at: https://github.com/wiggitywhitney/spider-rainbows/settings/hooks"
+        log_info "GitHub Webhook (for instant sync):"
+        if command -v gh &> /dev/null; then
+            log_success "  ✓ Automatically configured"
+            log_info "  URL: ${WEBHOOK_URL}"
+            log_info "  View at: https://github.com/wiggitywhitney/spider-rainbows/settings/hooks"
+        else
+            log_warning "  Manual setup required (gh CLI not installed)"
+            log_info "  URL: ${WEBHOOK_URL}"
+            log_info "  Secret: See ARGOCD_WEBHOOK_SECRET in .env"
+            log_info "  Content type: application/json"
+            log_info "  Events: Push events"
+            log_info "  Configure at: https://github.com/wiggitywhitney/spider-rainbows/settings/hooks"
+        fi
         echo ""
         log_info "Spider-Rainbows App:"
         log_info "  URL: http://spider-rainbows.${BASE_DOMAIN}"
