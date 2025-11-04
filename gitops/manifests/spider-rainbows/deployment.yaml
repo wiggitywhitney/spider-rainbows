@@ -23,15 +23,15 @@ spec:
           name: http
         livenessProbe:
           httpGet:
-            path: /healthz
-            port: 9090
+            path: /health
+            port: 8080
           initialDelaySeconds: 10
           periodSeconds: 5
           failureThreshold: 3
         readinessProbe:
           httpGet:
-            path: /healthz
-            port: 9090
+            path: /health
+            port: 8080
           initialDelaySeconds: 5
           periodSeconds: 5
         resources:
