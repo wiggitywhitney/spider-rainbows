@@ -270,16 +270,19 @@ if [ "$NEXT_VERSION" = "3" ]; then
     exit 1
   fi
 
-  # Fetch body and remove demo reference
+  # Fetch body and remove demo reference and old PRD link
   ORIGINAL_BODY=$(gh issue view 26 --json body -q .body 2>&1)
   ISSUE_BODY=$(echo "$ORIGINAL_BODY" | sed 's/ (Required for conference demo)//')
+
+  # Remove old PRD reference line (so we can add the correct one later)
+  ISSUE_BODY=$(echo "$ISSUE_BODY" | sed '/^\*\*Detailed PRD\*\*:/d')
 
   # Validate sed pattern worked (body should have changed)
   if [ "$ORIGINAL_BODY" = "$ISSUE_BODY" ]; then
     echo "⚠️  Warning: Demo reference pattern not found in issue body" >&3
     echo "  Proceeding with original body"
   else
-    echo "  Removed demo reference from body"
+    echo "  Removed demo reference and old PRD link from body"
   fi
 
   # Capture full gh output for debugging
