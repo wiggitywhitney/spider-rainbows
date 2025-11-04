@@ -97,7 +97,10 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 echo "   Pulling latest changes (in case CI already pushed)..."
 git pull --rebase origin main || {
   echo "❌ Git pull --rebase failed"
-  echo "   You may need to resolve conflicts manually"
+  echo "   Attempting to abort rebase..."
+  git rebase --abort 2>/dev/null
+  echo "   Repository restored to clean state"
+  echo "   Please resolve conflicts manually and re-run script"
   exit 1
 }
 

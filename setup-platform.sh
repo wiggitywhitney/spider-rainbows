@@ -117,6 +117,10 @@ check_kind_prerequisites() {
         missing_tools+=("curl")
     fi
 
+    if ! command -v openssl &> /dev/null; then
+        missing_tools+=("openssl")
+    fi
+
     if [ ${#missing_tools[@]} -ne 0 ]; then
         log_error "Missing required tools: ${missing_tools[*]}"
         log_info "Please install missing tools and try again."
@@ -181,6 +185,11 @@ check_gcp_prerequisites() {
     # Check curl
     if ! command -v curl &> /dev/null; then
         missing_tools+=("curl")
+    fi
+
+    # Check openssl
+    if ! command -v openssl &> /dev/null; then
+        missing_tools+=("openssl")
     fi
 
     # Check gke-gcloud-auth-plugin - auto-add to PATH if gcloud is installed
@@ -741,10 +750,27 @@ configure_argocd_webhook_secret() {
 
     # Save webhook secret to .env file (must be run from repository root)
     local env_file=".env"
+
+    # Verify .env is in .gitignore (defensive check)
+    if [ -f ".gitignore" ] && ! grep -q "^\.env$" ".gitignore"; then
+        log_warning ".env is not in .gitignore - secrets may be committed to git!"
+        log_warning "Add '.env' to .gitignore before proceeding"
+    fi
+
+    # Escape special characters in webhook_secret for sed (/, &, \)
+    local webhook_secret_escaped
+    webhook_secret_escaped=$(printf '%s\n' "$webhook_secret" | sed 's/[\/&]/\\&/g')
+
     if grep -q "^ARGOCD_WEBHOOK_SECRET=" "$env_file" 2>/dev/null; then
-        # Update existing entry
-        sed -i.bak "s|^ARGOCD_WEBHOOK_SECRET=.*|ARGOCD_WEBHOOK_SECRET=$webhook_secret|" "$env_file"
-        rm -f "${env_file}.bak"
+        # Update existing entry with escaped secret (portable sed syntax)
+        if sed --version >/dev/null 2>&1; then
+            # GNU sed (Linux)
+            sed -i "s|^ARGOCD_WEBHOOK_SECRET=.*|ARGOCD_WEBHOOK_SECRET=$webhook_secret_escaped|" "$env_file"
+        else
+            # BSD sed (macOS)
+            sed -i.bak "s|^ARGOCD_WEBHOOK_SECRET=.*|ARGOCD_WEBHOOK_SECRET=$webhook_secret_escaped|" "$env_file"
+            rm -f "${env_file}.bak"
+        fi
     else
         # Append new entry
         echo "" >> "$env_file"
@@ -1176,7 +1202,7 @@ main() {
         echo ""
         log_info "GitHub Webhook Configuration (for instant sync):"
         log_info "  Webhook URL: ${WEBHOOK_URL}"
-        log_info "  Secret: ${WEBHOOK_SECRET}"
+        log_info "  Secret: (stored in .env file - see ARGOCD_WEBHOOK_SECRET)"
         log_info "  Content type: application/json"
         log_info "  Events: Push events"
         log_info "  Configure at: https://github.com/wiggitywhitney/spider-rainbows/settings/hooks"
