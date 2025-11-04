@@ -136,6 +136,11 @@ check_kind_prerequisites() {
         log_info "Install from: https://cli.github.com/"
     fi
 
+    if ! command -v jq &> /dev/null; then
+        log_warning "jq not found - webhook management may not work"
+        log_info "Install from: https://jqlang.github.io/jq/"
+    fi
+
     # Check if Docker daemon is running
     if ! docker ps &> /dev/null; then
         log_error "Docker daemon is not running"
@@ -230,6 +235,11 @@ check_gcp_prerequisites() {
     if ! command -v gh &> /dev/null; then
         log_warning "GitHub CLI (gh) not found - webhook will need manual setup"
         log_info "Install from: https://cli.github.com/"
+    fi
+
+    if ! command -v jq &> /dev/null; then
+        log_warning "jq not found - webhook management may not work"
+        log_info "Install from: https://jqlang.github.io/jq/"
     fi
 
     # Check gcloud authentication
@@ -819,9 +829,10 @@ configure_argocd_webhook_secret() {
 
     # Check if webhook already exists
     log_info "Checking for existing webhook..."
-    existing_webhook=$(gh api "repos/${GITHUB_REPO}/hooks" --jq ".[] | select(.config.url == \"$WEBHOOK_URL\") | .id" 2>/dev/null || echo "")
+    existing_webhook=$(gh api "repos/${GITHUB_REPO}/hooks" 2>/dev/null | jq -r ".[] | select(.config.url == \"$WEBHOOK_URL\") | .id" 2>/dev/null || echo "")
 
-    if [ -n "$existing_webhook" ]; then
+    # Validate that we got a numeric webhook ID, not error JSON
+    if [ -n "$existing_webhook" ] && [[ "$existing_webhook" =~ ^[0-9]+$ ]]; then
         log_info "Webhook already exists (ID: $existing_webhook)"
         log_success "Using existing GitHub webhook"
 
