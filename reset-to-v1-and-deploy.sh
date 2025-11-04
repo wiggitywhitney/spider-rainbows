@@ -93,6 +93,14 @@ git commit --allow-empty -m "chore: reset to v1 baseline and deploy
 
 Co-Authored-By: Claude <noreply@anthropic.com>"
 
+# Pull with rebase to handle any changes made by GitHub Actions
+echo "   Pulling latest changes (in case CI already pushed)..."
+git pull --rebase origin main || {
+  echo "❌ Git pull --rebase failed"
+  echo "   You may need to resolve conflicts manually"
+  exit 1
+}
+
 git push origin main || {
   echo "❌ Git push failed"
   exit 1
