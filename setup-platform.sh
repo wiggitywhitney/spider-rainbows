@@ -26,6 +26,9 @@ GCP_REGION="us-east1"
 GCP_MACHINE_TYPE="n1-standard-4"
 GCP_NUM_NODES="1"
 
+# GitHub Configuration (dynamically detected from git remote)
+GITHUB_REPO=$(git config --get remote.origin.url 2>/dev/null | sed -E 's#.*github\.com[:/]([^/]+/[^/]+)(\.git)?$#\1#' || echo "")
+
 # Deployment mode (will be set by user prompt)
 DEPLOYMENT_MODE=""
 BASE_DOMAIN=""
@@ -799,28 +802,86 @@ configure_argocd_webhook_secret() {
     # Create GitHub webhook
     log_info "Creating GitHub webhook for instant ArgoCD sync..."
 
+    # Webhook creation is optional - script can continue without it
     if ! command -v gh &> /dev/null; then
         log_warning "GitHub CLI (gh) not found - skipping webhook creation"
-        log_info "Install gh CLI and manually create webhook at:"
-        log_info "  https://github.com/wiggitywhitney/spider-rainbows/settings/hooks"
+        log_info "Webhook can be configured manually after setup completes"
+        log_info "Install gh CLI from: https://cli.github.com/"
         return
     fi
 
-    # Create webhook using gh API
-    gh api repos/wiggitywhitney/spider-rainbows/hooks -X POST -f name=web \
+    # Validate GitHub repository is detected
+    if [ -z "$GITHUB_REPO" ]; then
+        log_warning "Could not detect GitHub repository from git remote"
+        log_info "Webhook can be configured manually after setup completes"
+        return
+    fi
+
+    # Check if webhook already exists
+    log_info "Checking for existing webhook..."
+    existing_webhook=$(gh api "repos/${GITHUB_REPO}/hooks" --jq ".[] | select(.config.url == \"$WEBHOOK_URL\") | .id" 2>/dev/null || echo "")
+
+    if [ -n "$existing_webhook" ]; then
+        log_info "Webhook already exists (ID: $existing_webhook)"
+        log_success "Using existing GitHub webhook"
+
+        # Store webhook ID for future management
+        if [ -f ".env" ]; then
+            if grep -q "^ARGOCD_WEBHOOK_ID=" ".env" 2>/dev/null; then
+                if sed --version >/dev/null 2>&1; then
+                    sed -i "s|^ARGOCD_WEBHOOK_ID=.*|ARGOCD_WEBHOOK_ID=$existing_webhook|" ".env"
+                else
+                    sed -i.bak "s|^ARGOCD_WEBHOOK_ID=.*|ARGOCD_WEBHOOK_ID=$existing_webhook|" ".env"
+                    rm -f ".env.bak"
+                fi
+            else
+                echo "ARGOCD_WEBHOOK_ID=$existing_webhook" >> ".env"
+            fi
+        fi
+        return
+    fi
+
+    # Create new webhook (redirect stderr to prevent secret exposure)
+    log_info "Creating new webhook..."
+    webhook_response=$(gh api "repos/${GITHUB_REPO}/hooks" -X POST \
+        -f name=web \
         -f config[url]="$WEBHOOK_URL" \
         -f config[content_type]=json \
         -f config[insecure_ssl]=0 \
         -f config[secret]="$WEBHOOK_SECRET" \
         -F events[]=push \
-        -F active=true || {
+        -F active=true 2>/dev/null) || {
         log_warning "Failed to create GitHub webhook"
-        log_info "You may need to create it manually at:"
-        log_info "  https://github.com/wiggitywhitney/spider-rainbows/settings/hooks"
+        log_info "Webhook can be configured manually after setup completes"
+        log_info "Visit: https://github.com/${GITHUB_REPO}/settings/hooks"
         return
     }
 
-    log_success "GitHub webhook created successfully"
+    # Extract webhook ID from response
+    webhook_id=$(echo "$webhook_response" | jq -r '.id' 2>/dev/null || echo "")
+
+    if [ -n "$webhook_id" ]; then
+        log_success "GitHub webhook created successfully (ID: $webhook_id)"
+
+        # Store webhook ID in .env for future management
+        if [ -f ".env" ]; then
+            if grep -q "^ARGOCD_WEBHOOK_ID=" ".env" 2>/dev/null; then
+                # Update existing entry
+                if sed --version >/dev/null 2>&1; then
+                    sed -i "s|^ARGOCD_WEBHOOK_ID=.*|ARGOCD_WEBHOOK_ID=$webhook_id|" ".env"
+                else
+                    sed -i.bak "s|^ARGOCD_WEBHOOK_ID=.*|ARGOCD_WEBHOOK_ID=$webhook_id|" ".env"
+                    rm -f ".env.bak"
+                fi
+            else
+                # Append new entry
+                echo "ARGOCD_WEBHOOK_ID=$webhook_id" >> ".env"
+            fi
+            log_success "Webhook ID saved to .env"
+        fi
+    else
+        log_success "GitHub webhook created successfully"
+    fi
 }
 
 install_argocd_ingress() {

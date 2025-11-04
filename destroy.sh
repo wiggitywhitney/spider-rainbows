@@ -154,35 +154,56 @@ if [ "$CLUSTER_DELETED" = true ]; then
     if command -v gh &> /dev/null; then
         log_info "Checking for orphaned GitHub webhooks..."
 
-        # Find webhooks pointing to ArgoCD (cluster-specific)
-        webhook_data=$(gh api repos/wiggitywhitney/spider-rainbows/hooks --jq '.[] | select(.config.url | contains("argocd.")) | {id: .id, url: .config.url}' 2>/dev/null | head -1)
+        # Detect GitHub repository from git remote
+        GITHUB_REPO=$(git config --get remote.origin.url 2>/dev/null | sed -E 's#.*github\.com[:/]([^/]+/[^/]+)(\.git)?$#\1#' || echo "")
 
-        if [ -n "$webhook_data" ]; then
-            webhook_id=$(echo "$webhook_data" | jq -r '.id')
-            webhook_url=$(echo "$webhook_data" | jq -r '.url')
+        if [ -z "$GITHUB_REPO" ]; then
+            log_warning "Could not detect GitHub repository from git remote"
+            log_info "Skipping webhook cleanup"
+        else
+            webhook_id=""
 
-            log_info "Found ArgoCD webhook:"
-            log_info "  ID: $webhook_id"
-            log_info "  URL: $webhook_url"
-            log_info "Deleting webhook..."
+            # Try to get webhook ID from .env first (most reliable)
+            if [ -f ".env" ] && grep -q "^ARGOCD_WEBHOOK_ID=" ".env" 2>/dev/null; then
+                webhook_id=$(grep "^ARGOCD_WEBHOOK_ID=" ".env" | cut -d'=' -f2)
+                log_info "Found webhook ID in .env: $webhook_id"
+            fi
 
-            if gh api -X DELETE repos/wiggitywhitney/spider-rainbows/hooks/"$webhook_id" 2>/dev/null; then
-                log_success "GitHub webhook deleted"
+            # If no ID in .env, search for webhook by URL pattern
+            if [ -z "$webhook_id" ]; then
+                webhook_data=$(gh api "repos/${GITHUB_REPO}/hooks" --jq '.[] | select(.config.url | contains("argocd.")) | {id: .id, url: .config.url}' 2>/dev/null | head -1)
+                if [ -n "$webhook_data" ]; then
+                    webhook_id=$(echo "$webhook_data" | jq -r '.id')
+                    webhook_url=$(echo "$webhook_data" | jq -r '.url')
+                    log_info "Found ArgoCD webhook:"
+                    log_info "  ID: $webhook_id"
+                    log_info "  URL: $webhook_url"
+                fi
+            fi
 
-                # Auto-remove from .env if exists
-                if [ -f ".env" ] && grep -q "^ARGOCD_WEBHOOK_SECRET=" ".env" 2>/dev/null; then
-                    if sed --version >/dev/null 2>&1; then
-                        # GNU sed (Linux) - combine deletions
-                        sed -i '/^# ArgoCD Webhook Secret/d; /^ARGOCD_WEBHOOK_SECRET=/d' ".env"
-                    else
-                        # BSD sed (macOS) - combine deletions
-                        sed -i.bak '/^# ArgoCD Webhook Secret/d; /^ARGOCD_WEBHOOK_SECRET=/d' ".env"
-                        rm -f ".env.bak"
+            # Delete webhook if found
+            if [ -n "$webhook_id" ]; then
+                log_info "Deleting webhook..."
+                if gh api -X DELETE "repos/${GITHUB_REPO}/hooks/${webhook_id}" 2>/dev/null; then
+                    log_success "GitHub webhook deleted"
+
+                    # Auto-remove webhook configuration from .env
+                    if [ -f ".env" ]; then
+                        if sed --version >/dev/null 2>&1; then
+                            # GNU sed (Linux) - combine deletions
+                            sed -i '/^# ArgoCD Webhook Secret/d; /^ARGOCD_WEBHOOK_SECRET=/d; /^ARGOCD_WEBHOOK_ID=/d' ".env"
+                        else
+                            # BSD sed (macOS) - combine deletions
+                            sed -i.bak '/^# ArgoCD Webhook Secret/d; /^ARGOCD_WEBHOOK_SECRET=/d; /^ARGOCD_WEBHOOK_ID=/d' ".env"
+                            rm -f ".env.bak"
+                        fi
+                        log_success "Removed webhook configuration from .env"
                     fi
-                    log_success "Removed webhook secret from .env"
+                else
+                    log_warning "Failed to delete webhook (may require manual cleanup)"
                 fi
             else
-                log_warning "Failed to delete webhook (may require manual cleanup)"
+                log_info "No ArgoCD webhook found"
             fi
         fi
     else
