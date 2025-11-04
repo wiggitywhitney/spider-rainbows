@@ -8,8 +8,9 @@ services:
     container_name: dot-ai
     network_mode: "host"
     environment:
-      # AI Provider Configuration (default: anthropic)
-      # Future: Add AI_PROVIDER variable here for alternative AI providers
+      # AI Provider Configuration
+      # Options: anthropic (Sonnet 4.5), anthropic_haiku (Haiku 4.5)
+      AI_PROVIDER: ${AI_PROVIDER:-anthropic_haiku}
       # Required: Anthropic API key for AI analysis
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       # Required: OpenAI API key for embeddings (capabilities, policies, patterns)
