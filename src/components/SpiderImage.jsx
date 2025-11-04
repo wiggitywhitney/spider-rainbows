@@ -1,13 +1,6 @@
 import './SpiderImage.css';
-// Helper function to calculate spider position
-const calculateSpiderPosition = (index, total) => {
-  const angle = (index / total) * Math.PI * 2;
-  return { x: Math.cos(angle), y: Math.sin(angle) };
-};
 
 const SpiderImage = ({ rainbowWidth }) => {
-  const unusedSpiderCount = 0;
-  let spiderAnimationFrame;
   const spiderWidth = rainbowWidth * 0.50;
 
   return (
