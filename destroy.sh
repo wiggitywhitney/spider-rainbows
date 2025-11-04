@@ -146,6 +146,38 @@ for cluster in "${gcp_clusters[@]}"; do
     echo ""
 done
 
+# Auto-cleanup GitHub webhook if pointing to deleted cluster
+if command -v gh &> /dev/null; then
+    log_info "Checking for orphaned GitHub webhooks..."
+
+    # Find webhooks pointing to ArgoCD (cluster-specific)
+    webhook_id=$(gh api repos/wiggitywhitney/spider-rainbows/hooks --jq '.[] | select(.config.url | contains("argocd.")) | .id' 2>/dev/null | head -1)
+
+    if [ -n "$webhook_id" ]; then
+        log_info "Found ArgoCD webhook (ID: $webhook_id) - deleting..."
+        if gh api -X DELETE repos/wiggitywhitney/spider-rainbows/hooks/"$webhook_id" 2>/dev/null; then
+            log_success "GitHub webhook deleted"
+
+            # Auto-remove from .env if exists
+            if [ -f ".env" ] && grep -q "^ARGOCD_WEBHOOK_SECRET=" ".env" 2>/dev/null; then
+                if sed --version >/dev/null 2>&1; then
+                    # GNU sed (Linux)
+                    sed -i '/^# ArgoCD Webhook Secret/d' ".env"
+                    sed -i '/^ARGOCD_WEBHOOK_SECRET=/d' ".env"
+                else
+                    # BSD sed (macOS)
+                    sed -i.bak '/^# ArgoCD Webhook Secret/d' ".env"
+                    sed -i.bak '/^ARGOCD_WEBHOOK_SECRET=/d' ".env"
+                    rm -f ".env.bak"
+                fi
+                log_success "Removed webhook secret from .env"
+            fi
+        else
+            log_warning "Failed to delete webhook (may require manual cleanup)"
+        fi
+    fi
+fi
+
 echo ""
 log_success "=============================================="
 log_success "✅ Cleanup complete"
