@@ -113,6 +113,9 @@ fi
 # Remove K8s node taints (graceful failure if cluster unavailable)
 kubectl taint nodes --all demo=scary:NoSchedule- 2>/dev/null || true
 
+# Remove tolerations from deployment (graceful failure if cluster unavailable)
+kubectl patch deployment spider-rainbows -n default --type=json -p='[{"op": "remove", "path": "/spec/template/spec/tolerations"}]' 2>/dev/null || true
+
 # ==============================================================================
 # Verify reset
 # ==============================================================================
