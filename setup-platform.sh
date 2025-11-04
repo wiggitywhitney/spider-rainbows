@@ -2,13 +2,20 @@
 # Setup script for spider-rainbows GitOps demo environment
 # Creates a Kind cluster with ArgoCD, ingress controller, and GitOps configuration
 #
-# Usage: ./kind/setup-argocd.sh
+# Usage:
+#   ./setup-platform.sh [kind|gcp]
+#
+# Arguments:
+#   kind - Deploy to local Kind cluster (default if no argument provided)
+#   gcp  - Deploy to Google Cloud Platform GKE cluster
 #
 # Prerequisites:
-#   - kind (Kubernetes in Docker)
+#   - kind (Kubernetes in Docker) for local deployment
 #   - kubectl
 #   - docker
 #   - curl
+#   - gcloud CLI (for GCP deployment)
+#   - gh CLI (for GitHub webhook management)
 
 set -euo pipefail  # Exit on error, undefined variables, and pipe failures
 
@@ -1259,8 +1266,27 @@ main() {
     # Initialize MCP configuration flag
     MCP_CONFIGURED=false
 
-    # Prompt for deployment mode
-    prompt_deployment_mode
+    # Parse command-line arguments for cluster type
+    if [ $# -gt 0 ]; then
+        case "$1" in
+            kind)
+                DEPLOYMENT_MODE="kind"
+                log_success "Cluster type: Kind (local)"
+                ;;
+            gcp)
+                DEPLOYMENT_MODE="gcp"
+                log_success "Cluster type: GCP (cloud)"
+                ;;
+            *)
+                log_error "Invalid cluster type: $1"
+                log_info "Usage: $0 [kind|gcp]"
+                exit 1
+                ;;
+        esac
+    else
+        # Prompt for deployment mode if no argument provided
+        prompt_deployment_mode
+    fi
 
     # Phase 1: Cluster and Ingress
     check_prerequisites
