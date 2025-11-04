@@ -34,8 +34,9 @@ log_info "🕷️  Spider-Rainbows Cluster Cleanup"
 log_info "======================================"
 echo ""
 
-# Initialize MCP cleanup flag
+# Initialize cleanup flags
 MCP_CLEANED=false
+CLUSTER_DELETED=false
 
 # Arrays to store found clusters
 kind_clusters=()
@@ -94,8 +95,9 @@ for cluster in "${kind_clusters[@]}"; do
             rm -rf /tmp/dot-ai-token.txt
             log_success "MCP authentication files removed"
 
-            # Set flag to remind about Claude Code restart
+            # Set flags
             MCP_CLEANED=true
+            CLUSTER_DELETED=true
         else
             log_error "Failed to delete Kind cluster"
             exit 1
@@ -134,8 +136,9 @@ for cluster in "${gcp_clusters[@]}"; do
             rm -rf /tmp/dot-ai-token.txt
             log_success "MCP authentication files removed"
 
-            # Set flag to remind about Claude Code restart
+            # Set flags
             MCP_CLEANED=true
+            CLUSTER_DELETED=true
         else
             log_error "Failed to delete GKE cluster"
             exit 1
@@ -145,6 +148,76 @@ for cluster in "${gcp_clusters[@]}"; do
     fi
     echo ""
 done
+
+# Auto-cleanup GitHub webhook if a cluster was deleted
+if [ "$CLUSTER_DELETED" = true ]; then
+    if command -v gh &> /dev/null; then
+        log_info "Checking for orphaned GitHub webhooks..."
+
+        # Detect GitHub repository from git remote
+        GITHUB_REPO=$(git config --get remote.origin.url 2>/dev/null | sed -E 's#.*github\.com[:/]([^/]+/[^/]+)(\.git)?$#\1#' || echo "")
+
+        if [ -z "$GITHUB_REPO" ]; then
+            log_warning "Could not detect GitHub repository from git remote"
+            log_info "Skipping webhook cleanup"
+        else
+            webhook_id=""
+
+            # Try to get webhook ID from .env first (most reliable)
+            if [ -f ".env" ] && grep -q "^ARGOCD_WEBHOOK_ID=" ".env" 2>/dev/null; then
+                webhook_id=$(grep "^ARGOCD_WEBHOOK_ID=" ".env" | cut -d'=' -f2)
+                log_info "Found webhook ID in .env: $webhook_id"
+            fi
+
+            # If no ID in .env, search for webhook by URL pattern
+            if [ -z "$webhook_id" ]; then
+                webhook_data=$(gh api "repos/${GITHUB_REPO}/hooks" --jq '.[] | select(.config.url | contains("argocd.")) | {id: .id, url: .config.url}' 2>/dev/null | head -1)
+                if [ -n "$webhook_data" ]; then
+                    webhook_id=$(echo "$webhook_data" | jq -r '.id')
+                    webhook_url=$(echo "$webhook_data" | jq -r '.url')
+                    log_info "Found ArgoCD webhook:"
+                    log_info "  ID: $webhook_id"
+                    log_info "  URL: $webhook_url"
+                fi
+            fi
+
+            # Delete webhook if found
+            if [ -n "$webhook_id" ]; then
+                log_info "Deleting webhook..."
+                if gh api -X DELETE "repos/${GITHUB_REPO}/hooks/${webhook_id}" 2>/dev/null; then
+                    log_success "GitHub webhook deleted"
+
+                    # Auto-remove webhook configuration from .env
+                    if [ -f ".env" ]; then
+                        if sed --version >/dev/null 2>&1; then
+                            # GNU sed (Linux) - combine deletions
+                            if sed -i '/^# ArgoCD Webhook Secret/d; /^ARGOCD_WEBHOOK_SECRET=/d; /^ARGOCD_WEBHOOK_ID=/d' ".env" 2>/dev/null; then
+                                log_success "Removed webhook configuration from .env"
+                            else
+                                log_warning "Failed to remove webhook configuration from .env (manual cleanup may be needed)"
+                            fi
+                        else
+                            # BSD sed (macOS) - combine deletions
+                            if sed -i.bak '/^# ArgoCD Webhook Secret/d; /^ARGOCD_WEBHOOK_SECRET=/d; /^ARGOCD_WEBHOOK_ID=/d' ".env" 2>/dev/null; then
+                                rm -f ".env.bak"
+                                log_success "Removed webhook configuration from .env"
+                            else
+                                log_warning "Failed to remove webhook configuration from .env (backup remains at .env.bak)"
+                            fi
+                        fi
+                    fi
+                else
+                    log_warning "Failed to delete webhook (may require manual cleanup)"
+                fi
+            else
+                log_info "No ArgoCD webhook found"
+            fi
+        fi
+    else
+        log_warning "GitHub CLI (gh) not found - skipping webhook cleanup"
+        log_info "Install gh CLI to enable automatic webhook cleanup: https://cli.github.com/"
+    fi
+fi
 
 echo ""
 log_success "=============================================="
