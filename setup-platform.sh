@@ -759,7 +759,7 @@ configure_argocd_webhook_secret() {
 
     # Store webhook secret for display at the end
     WEBHOOK_SECRET="$webhook_secret"
-    WEBHOOK_URL="http://argocd.${BASE_DOMAIN}/api/webhook"
+    WEBHOOK_URL="https://argocd.${BASE_DOMAIN}/api/webhook"
 }
 
 install_argocd_ingress() {
