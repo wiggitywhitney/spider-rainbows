@@ -3,8 +3,7 @@
 # reset-to-v1-and-deploy.sh
 #
 # PURPOSE:
-#   Performs a complete reset to v1 baseline including building, pushing,
-#   and deploying the v1 version to production via ArgoCD.
+#   Performs a complete reset to v1 baseline and deploys to production via ArgoCD.
 #
 # WHEN TO USE:
 #   - After conference demo is complete
@@ -17,15 +16,12 @@
 #
 # WHAT IT DOES:
 #   1. Runs reset-to-v1-local.sh (resets component files)
-#   2. Builds Docker image with v1 code
-#   3. Pushes Docker image to DockerHub
-#   4. Commits changes to git
-#   5. Pushes to main branch
-#   6. Triggers GitHub Actions workflow
-#   7. ArgoCD syncs and deploys v1
+#   2. Commits changes to git
+#   3. Pushes to main branch
+#   4. Triggers GitHub Actions workflow (builds & pushes Docker image)
+#   5. ArgoCD syncs and deploys v1
 #
 # WHAT IT REQUIRES:
-#   - Docker installed and authenticated to DockerHub
 #   - Git push access to repository
 #   - On main branch
 #
@@ -85,42 +81,11 @@ fi
 }
 
 # ==============================================================================
-# Step 2: Build Docker image
+# Step 2: Commit and push to trigger GitHub Actions
 # ==============================================================================
 
 echo ""
-echo "🐳 Step 2: Building Docker image..."
-
-# Use git SHA for immutable tagging
-GIT_SHA=$(git rev-parse --short HEAD)
-IMAGE_TAG="v1-baseline-${GIT_SHA}"
-
-echo "   Image tag: ${IMAGE_TAG}"
-
-docker build -t wiggitywhitney/spider-rainbows:${IMAGE_TAG} . || {
-  echo "❌ Docker build failed"
-  exit 1
-}
-
-# ==============================================================================
-# Step 3: Push to DockerHub
-# ==============================================================================
-
-echo ""
-echo "📤 Step 3: Pushing to DockerHub..."
-docker push wiggitywhitney/spider-rainbows:${IMAGE_TAG} || {
-  echo "❌ Docker push failed"
-  exit 1
-}
-
-echo "✅ Docker image built and pushed: wiggitywhitney/spider-rainbows:${IMAGE_TAG}"
-
-# ==============================================================================
-# Step 4: Commit and push to trigger GitHub Actions
-# ==============================================================================
-
-echo ""
-echo "📤 Step 4: Committing and pushing to main..."
+echo "📤 Step 2: Committing and pushing to main..."
 git add .
 git commit --allow-empty -m "chore: reset to v1 baseline and deploy
 
@@ -138,16 +103,15 @@ git push origin main || {
 # ==============================================================================
 
 echo ""
-echo "✅ Reset to v1 complete and deployed!"
+echo "✅ Reset to v1 complete!"
 echo ""
 echo "What happened:"
 echo "  1. ✅ Local files reset to v1"
-echo "  2. ✅ Docker image built: wiggitywhitney/spider-rainbows:${IMAGE_TAG}"
-echo "  3. ✅ Image pushed to DockerHub"
-echo "  4. ✅ Changes committed and pushed to main"
+echo "  2. ✅ Changes committed and pushed to main"
 echo ""
 echo "Next steps:"
-echo "  - GitHub Actions will update GitOps repo with ${IMAGE_TAG}"
+echo "  - GitHub Actions will build and push Docker image"
+echo "  - GitHub Actions will update GitOps deployment manifest"
 echo "  - ArgoCD will sync and deploy v1 spiders to production"
 echo "  - Monitor ArgoCD UI for deployment status"
 echo ""
