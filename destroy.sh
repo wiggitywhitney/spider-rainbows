@@ -191,13 +191,20 @@ if [ "$CLUSTER_DELETED" = true ]; then
                     if [ -f ".env" ]; then
                         if sed --version >/dev/null 2>&1; then
                             # GNU sed (Linux) - combine deletions
-                            sed -i '/^# ArgoCD Webhook Secret/d; /^ARGOCD_WEBHOOK_SECRET=/d; /^ARGOCD_WEBHOOK_ID=/d' ".env"
+                            if sed -i '/^# ArgoCD Webhook Secret/d; /^ARGOCD_WEBHOOK_SECRET=/d; /^ARGOCD_WEBHOOK_ID=/d' ".env" 2>/dev/null; then
+                                log_success "Removed webhook configuration from .env"
+                            else
+                                log_warning "Failed to remove webhook configuration from .env (manual cleanup may be needed)"
+                            fi
                         else
                             # BSD sed (macOS) - combine deletions
-                            sed -i.bak '/^# ArgoCD Webhook Secret/d; /^ARGOCD_WEBHOOK_SECRET=/d; /^ARGOCD_WEBHOOK_ID=/d' ".env"
-                            rm -f ".env.bak"
+                            if sed -i.bak '/^# ArgoCD Webhook Secret/d; /^ARGOCD_WEBHOOK_SECRET=/d; /^ARGOCD_WEBHOOK_ID=/d' ".env" 2>/dev/null; then
+                                rm -f ".env.bak"
+                                log_success "Removed webhook configuration from .env"
+                            else
+                                log_warning "Failed to remove webhook configuration from .env (backup remains at .env.bak)"
+                            fi
                         fi
-                        log_success "Removed webhook configuration from .env"
                     fi
                 else
                     log_warning "Failed to delete webhook (may require manual cleanup)"
@@ -207,7 +214,7 @@ if [ "$CLUSTER_DELETED" = true ]; then
             fi
         fi
     else
-        log_info "GitHub CLI (gh) not found - skipping webhook cleanup"
+        log_warning "GitHub CLI (gh) not found - skipping webhook cleanup"
         log_info "Install gh CLI to enable automatic webhook cleanup: https://cli.github.com/"
     fi
 fi
