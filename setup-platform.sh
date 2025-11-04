@@ -723,6 +723,9 @@ configure_argocd_sync_interval() {
 configure_argocd_webhook_secret() {
     log_info "Configuring ArgoCD webhook secret for instant GitHub sync..."
 
+    # Wait for argocd-server to be ready before configuring webhook
+    kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=60s
+
     # Generate a secure random webhook secret
     local webhook_secret
     webhook_secret=$(openssl rand -base64 32)
@@ -733,16 +736,10 @@ configure_argocd_webhook_secret() {
 
     log_success "ArgoCD webhook secret configured"
 
-    # Restart argocd-server to apply the new setting
-    log_info "Restarting ArgoCD server..."
-    kubectl rollout restart deployment argocd-server -n argocd
+    # Note: ArgoCD server automatically detects secret changes and restarts itself
+    # No manual restart needed - server will reload configuration automatically
 
-    # Wait for the restart to complete
-    kubectl rollout status deployment argocd-server -n argocd --timeout=120s
-
-    log_success "ArgoCD server restarted"
-
-    # Save webhook secret to .env file
+    # Save webhook secret to .env file (must be run from repository root)
     local env_file=".env"
     if grep -q "^ARGOCD_WEBHOOK_SECRET=" "$env_file" 2>/dev/null; then
         # Update existing entry
@@ -1115,6 +1112,13 @@ main() {
     log_info "🕷️  Spider-Rainbows Demo Setup"
     log_info "==============================="
     echo ""
+
+    # Verify we're running from the repository root
+    if [ ! -f "package.json" ] || [ ! -d "src/components" ]; then
+        log_error "Must run this script from the repository root"
+        log_info "Expected to find: package.json and src/components/"
+        exit 1
+    fi
 
     # Initialize MCP configuration flag
     MCP_CONFIGURED=false
