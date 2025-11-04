@@ -165,8 +165,14 @@ if [ "$CLUSTER_DELETED" = true ]; then
 
             # Try to get webhook ID from .env first (most reliable)
             if [ -f ".env" ] && grep -q "^ARGOCD_WEBHOOK_ID=" ".env" 2>/dev/null; then
-                webhook_id=$(grep "^ARGOCD_WEBHOOK_ID=" ".env" | cut -d'=' -f2)
-                log_info "Found webhook ID in .env: $webhook_id"
+                webhook_id=$(grep "^ARGOCD_WEBHOOK_ID=" ".env" | tail -1 | cut -d'=' -f2)
+                # Validate webhook ID is numeric
+                if [[ ! "$webhook_id" =~ ^[0-9]+$ ]]; then
+                    log_warning "Invalid webhook ID in .env: $webhook_id"
+                    webhook_id=""
+                else
+                    log_info "Found webhook ID in .env: $webhook_id"
+                fi
             fi
 
             # If no ID in .env, search for webhook by URL pattern
