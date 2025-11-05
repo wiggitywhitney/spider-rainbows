@@ -138,27 +138,16 @@ if [ "$NEXT_VERSION" = "2" ]; then
 ' src/components/SurpriseSpider.jsx
   rm src/components/SurpriseSpider.jsx.bak
 
-  # Introduce width bug
   sed -i.bak 's|const spiderWidth = rainbowWidth \* 0.25|const spiderWidth = rainbowWidth * 0.50|' src/components/SpiderImage.jsx
   rm src/components/SpiderImage.jsx.bak
 
-  # Add duplicated code - duplicate the calculatePosition function in SpiderImage.jsx
-  sed -i.bak '/^const SpiderImage/i\
-// Helper function to calculate spider position\
-const calculateSpiderPosition = (index, total) => {\
-  const angle = (index / total) * Math.PI * 2;\
-  return { x: Math.cos(angle), y: Math.sin(angle) };\
-};\
-\
-' src/components/SpiderImage.jsx
+  sed -i.bak 's|<div className="spider-container">|<div style={{ display: "flex", justifyContent: "center", position: "absolute", top: "10%", left: 0, right: 0, zIndex: 5 }}>|' src/components/SpiderImage.jsx
   rm src/components/SpiderImage.jsx.bak
 
-  # Add dead/uninitialized variables in SpiderImage.jsx
-  sed -i.bak '/^const SpiderImage/a\
-  const unusedSpiderCount = 0;\
-  let spiderAnimationFrame;\
-' src/components/SpiderImage.jsx
-  rm src/components/SpiderImage.jsx.bak
+  if ! grep -q 'style={{ display: "flex"' src/components/SpiderImage.jsx; then
+    echo "❌ Error: Failed to add inline styles" >&3
+    exit 1
+  fi
 fi
 
 # ==============================================================================
@@ -217,35 +206,14 @@ if [ "$NEXT_VERSION" = "3" ]; then
 
   echo "  ✓ main branch is clean v2"
 
-  # Step 1: Reset to v1 baseline
-  echo "Step 1: Resetting to v1 baseline..."
-  if [ -f "./reset-to-v1-local.sh" ]; then
-    ./reset-to-v1-local.sh
+  # Step 1: Reset to clean v2 baseline
+  echo "Step 1: Establishing clean v2 baseline..."
+  if [ -f "./reset-to-v2-local.sh" ]; then
+    ./reset-to-v2-local.sh
   else
-    echo "❌ Error: reset-to-v1-local.sh not found" >&3
+    echo "❌ Error: reset-to-v2-local.sh not found" >&3
     exit 1
   fi
-
-  # Step 2: Update images to v2 (defines clean v2 baseline)
-  echo "Step 2: Establishing clean v2 baseline..."
-
-  # Verify v2 image files exist before updating references
-  if [ ! -f "public/Spider-v2.png" ]; then
-    echo "❌ Error: Spider-v2.png not found in public directory" >&3
-    exit 1
-  fi
-
-  if [ ! -f "public/spidersspidersspiders-v2.png" ]; then
-    echo "❌ Error: spidersspidersspiders-v2.png not found in public directory" >&3
-    exit 1
-  fi
-
-  sed -i.bak 's|src="/Spider-v1\.png"|src="/Spider-v2.png"|' src/components/SpiderImage.jsx
-  rm src/components/SpiderImage.jsx.bak
-
-  sed -i.bak 's|src="/spidersspidersspiders-v1\.png"|src="/spidersspidersspiders-v2.png"|' src/components/SurpriseSpider.jsx
-  rm src/components/SurpriseSpider.jsx.bak
-  echo "  v2 baseline established"
 
   # Commit the clean v2 baseline on main
   echo "  Committing v2 baseline to main..."
@@ -253,14 +221,14 @@ if [ "$NEXT_VERSION" = "3" ]; then
   git commit -m "chore: establish clean v2 baseline for v3 development"
   echo "  v2 baseline committed"
 
-  # Step 3: Create feature branch
-  echo "Step 3: Creating feature branch..."
+  # Step 2: Create feature branch
+  echo "Step 2: Creating feature branch..."
   FEATURE_BRANCH="feature/v3-scariest-spiders"
   git checkout -b "$FEATURE_BRANCH" 2>&1 || git checkout "$FEATURE_BRANCH" 2>&1
   echo "  Branch: $FEATURE_BRANCH"
 
-  # Step 4: Create new GitHub issue (copy issue #26, remove demo reference)
-  echo "Step 4: Creating new GitHub issue..."
+  # Step 3: Create new GitHub issue (copy issue #26, remove demo reference)
+  echo "Step 3: Creating new GitHub issue..."
   ISSUE_TITLE=$(gh issue view 26 --json title -q .title 2>&1)
   echo "  Issue title: $ISSUE_TITLE"
 
@@ -302,8 +270,8 @@ if [ "$NEXT_VERSION" = "3" ]; then
   fi
   echo "  Created issue #$NEW_ISSUE_NUM"
 
-  # Step 5: Copy PRD-26 to new PRD file with updated issue number
-  echo "Step 5: Generating PRD file..."
+  # Step 4: Copy PRD-26 to new PRD file with updated issue number
+  echo "Step 4: Generating PRD file..."
   NEW_PRD_FILE="prds/${NEW_ISSUE_NUM}-v3-horrifying-spider-images.md"
 
   # Verify source PRD exists
@@ -342,8 +310,8 @@ if [ "$NEXT_VERSION" = "3" ]; then
   gh issue edit "$NEW_ISSUE_NUM" --body "$UPDATED_BODY" 2>&1
   echo "  Updated issue with PRD link"
 
-  # Step 6: Cherry-pick v3 commits (selective files only)
-  echo "Step 6: Cherry-picking v3 implementation..."
+  # Step 5: Cherry-pick v3 commits (selective files only)
+  echo "Step 5: Cherry-picking v3 implementation..."
   echo "  Cherry-picking commit 1b0bcc1..."
 
   # Cherry-pick may have PRD conflicts (expected - we discard those changes)
@@ -405,47 +373,11 @@ if [ "$NEXT_VERSION" = "3" ]; then
   git add -u 2>&1  # Stage all other changes
   echo "  Cherry-pick complete"
 
-  # Step 7: Inject K8s failures
-  echo "Step 7: Injecting Kubernetes failures..."
-  echo "  Layer 1: Tainting nodes..."
+  # Step 6: Inject K8s failures
+  echo "Step 6: Injecting Kubernetes failures..."
+  echo "  Tainting nodes..."
   kubectl taint nodes --all demo=scary:NoSchedule 2>&1 || echo "  (kubectl not available or already tainted)"
-
-  # Layer 2: Over-allocate resources in deployment manifest
-  if [ -f "gitops/manifests/spider-rainbows/deployment.yaml" ]; then
-    echo "  Layer 2: Over-allocating resources..."
-    sed -i.bak 's|memory: "[^"]*"|memory: "10Gi"|' gitops/manifests/spider-rainbows/deployment.yaml
-    sed -i.bak 's|cpu: "[^"]*"|cpu: "4000m"|' gitops/manifests/spider-rainbows/deployment.yaml
-
-    # Validate resource over-allocation succeeded
-    if ! grep -q 'memory: "10Gi"' gitops/manifests/spider-rainbows/deployment.yaml; then
-      echo "❌ Error: Failed to over-allocate memory in deployment.yaml" >&3
-      exit 1
-    fi
-    if ! grep -q 'cpu: "4000m"' gitops/manifests/spider-rainbows/deployment.yaml; then
-      echo "❌ Error: Failed to over-allocate CPU in deployment.yaml" >&3
-      exit 1
-    fi
-
-    echo "  Layer 3: Breaking liveness probe..."
-    sed -i.bak 's|path: /health|path: /healthz|' gitops/manifests/spider-rainbows/deployment.yaml
-    sed -i.bak 's|port: 8080|port: 9090|' gitops/manifests/spider-rainbows/deployment.yaml
-
-    # Validate liveness probe breaking succeeded
-    if ! grep -q 'path: /healthz' gitops/manifests/spider-rainbows/deployment.yaml; then
-      echo "❌ Error: Failed to break liveness probe path in deployment.yaml" >&3
-      exit 1
-    fi
-    if ! grep -q 'port: 9090' gitops/manifests/spider-rainbows/deployment.yaml; then
-      echo "❌ Error: Failed to break liveness probe port in deployment.yaml" >&3
-      exit 1
-    fi
-
-    rm gitops/manifests/spider-rainbows/deployment.yaml.bak
-    echo "  K8s failures injected successfully"
-  else
-    echo "❌ Error: deployment.yaml not found at gitops/manifests/spider-rainbows/" >&3
-    exit 1
-  fi
+  echo "  K8s failures injected successfully"
 
   echo ""
   echo "✅ V3 development complete!" >&3

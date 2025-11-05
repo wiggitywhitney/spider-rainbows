@@ -101,15 +101,6 @@ fi
 # Note: This may have already been done by git clean, but we run it again to be thorough
 find prds -name "*-v3-horrifying-spider-images.md" ! -name "26-v3-horrifying-spider-images.md" -delete 2>/dev/null || true
 
-# Restore deployment manifest (undo K8s failures)
-if [ -f "gitops/manifests/spider-rainbows/deployment.yaml" ]; then
-  sed -i.bak 's|memory: "10Gi"|memory: "128Mi"|' gitops/manifests/spider-rainbows/deployment.yaml
-  sed -i.bak 's|cpu: "4000m"|cpu: "100m"|' gitops/manifests/spider-rainbows/deployment.yaml
-  sed -i.bak 's|path: /healthz|path: /health|' gitops/manifests/spider-rainbows/deployment.yaml
-  sed -i.bak 's|port: 9090|port: 8080|' gitops/manifests/spider-rainbows/deployment.yaml
-  rm -f gitops/manifests/spider-rainbows/deployment.yaml.bak
-fi
-
 # Remove K8s node taints (graceful failure if cluster unavailable)
 kubectl taint nodes --all demo=scary:NoSchedule- 2>/dev/null || true
 
