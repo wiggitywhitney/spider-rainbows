@@ -155,7 +155,7 @@ if [ "$CLUSTER_DELETED" = true ]; then
         log_info "Checking for orphaned GitHub webhooks..."
 
         # Detect GitHub repository from git remote
-        GITHUB_REPO=$(git config --get remote.origin.url 2>/dev/null | sed -E 's#.*github\.com[:/]([^/]+/[^/]+)(\.git)?$#\1#' || echo "")
+        GITHUB_REPO=$(git config --get remote.origin.url 2>/dev/null | sed -E 's#.*github\.com[:/]([^/]+/[^.]+)(\.git)?$#\1#' || echo "")
 
         if [ -z "$GITHUB_REPO" ]; then
             log_warning "Could not detect GitHub repository from git remote"

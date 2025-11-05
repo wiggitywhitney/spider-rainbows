@@ -834,29 +834,18 @@ configure_argocd_webhook_secret() {
         return
     fi
 
-    # Check if webhook already exists
+    # Check if webhook already exists and delete it (secrets won't match)
     log_info "Checking for existing webhook..."
     existing_webhook=$(gh api "repos/${GITHUB_REPO}/hooks" 2>/dev/null | jq -r ".[] | select(.config.url == \"$WEBHOOK_URL\") | .id" 2>/dev/null || echo "")
 
-    # Validate that we got a numeric webhook ID, not error JSON
+    # Delete old webhook to ensure clean state with current secrets
     if [ -n "$existing_webhook" ] && [[ "$existing_webhook" =~ ^[0-9]+$ ]]; then
-        log_info "Webhook already exists (ID: $existing_webhook)"
-        log_success "Using existing GitHub webhook"
-
-        # Store webhook ID for future management
-        if [ -f ".env" ]; then
-            if grep -q "^ARGOCD_WEBHOOK_ID=" ".env" 2>/dev/null; then
-                if sed --version >/dev/null 2>&1; then
-                    sed -i "s|^ARGOCD_WEBHOOK_ID=.*|ARGOCD_WEBHOOK_ID=$existing_webhook|" ".env"
-                else
-                    sed -i.bak "s|^ARGOCD_WEBHOOK_ID=.*|ARGOCD_WEBHOOK_ID=$existing_webhook|" ".env"
-                    rm -f ".env.bak"
-                fi
-            else
-                echo "ARGOCD_WEBHOOK_ID=$existing_webhook" >> ".env"
-            fi
+        log_info "Found existing webhook (ID: $existing_webhook) - deleting for clean state..."
+        if gh api -X DELETE "repos/${GITHUB_REPO}/hooks/${existing_webhook}" 2>/dev/null; then
+            log_success "Old webhook deleted"
+        else
+            log_warning "Could not delete old webhook - will attempt to create new one"
         fi
-        return
     fi
 
     # Create new webhook (redirect stderr to prevent secret exposure)
