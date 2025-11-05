@@ -854,7 +854,7 @@ configure_argocd_webhook_secret() {
         -f name=web \
         -f config[url]="$WEBHOOK_URL" \
         -f config[content_type]=json \
-        -f config[insecure_ssl]=0 \
+        -f config[insecure_ssl]=1 \
         -f config[secret]="$WEBHOOK_SECRET" \
         -F events[]=push \
         -F active=true 2>/dev/null) || {
