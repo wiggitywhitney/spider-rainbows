@@ -25,7 +25,11 @@ echo "🔄 Resetting to v2 baseline..."
 
 echo "Step 1: Resetting to v1 baseline..."
 if [ -f "./reset-to-v1-local.sh" ]; then
-  ./reset-to-v1-local.sh
+  ./reset-to-v1-local.sh > /dev/null 2>&1 || {
+    echo "❌ Error: reset-to-v1-local.sh failed"
+    exit 1
+  }
+  echo "  ✓ v1 baseline restored"
 else
   echo "❌ Error: reset-to-v1-local.sh not found"
   exit 1
