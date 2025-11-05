@@ -34,7 +34,7 @@ GCP_MACHINE_TYPE="n1-standard-4"
 GCP_NUM_NODES="1"
 
 # GitHub Configuration (dynamically detected from git remote)
-GITHUB_REPO=$(git config --get remote.origin.url 2>/dev/null | sed -E 's#.*github\.com[:/]([^/]+/[^/]+)(\.git)?$#\1#' || echo "")
+GITHUB_REPO=$(git config --get remote.origin.url 2>/dev/null | sed -E 's#.*github\.com[:/]([^/]+/[^.]+)(\.git)?$#\1#' || echo "")
 
 # Deployment mode (will be set by user prompt)
 DEPLOYMENT_MODE=""
