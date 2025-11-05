@@ -138,26 +138,10 @@ if [ "$NEXT_VERSION" = "2" ]; then
 ' src/components/SurpriseSpider.jsx
   rm src/components/SurpriseSpider.jsx.bak
 
-  # Introduce width bug
   sed -i.bak 's|const spiderWidth = rainbowWidth \* 0.25|const spiderWidth = rainbowWidth * 0.50|' src/components/SpiderImage.jsx
   rm src/components/SpiderImage.jsx.bak
 
-  # Add duplicated code - duplicate the calculatePosition function in SpiderImage.jsx
-  sed -i.bak '/^const SpiderImage/i\
-// Helper function to calculate spider position\
-const calculateSpiderPosition = (index, total) => {\
-  const angle = (index / total) * Math.PI * 2;\
-  return { x: Math.cos(angle), y: Math.sin(angle) };\
-};\
-\
-' src/components/SpiderImage.jsx
-  rm src/components/SpiderImage.jsx.bak
-
-  # Add dead/uninitialized variables in SpiderImage.jsx
-  sed -i.bak '/^const SpiderImage/a\
-  const unusedSpiderCount = 0;\
-  let spiderAnimationFrame;\
-' src/components/SpiderImage.jsx
+  sed -i.bak 's|<div className="spider-container">|<div style={{ display: "flex", justifyContent: "center", position: "absolute", top: "10%", left: 0, right: 0, zIndex: 5 }}>|' src/components/SpiderImage.jsx
   rm src/components/SpiderImage.jsx.bak
 fi
 
@@ -407,45 +391,9 @@ if [ "$NEXT_VERSION" = "3" ]; then
 
   # Step 7: Inject K8s failures
   echo "Step 7: Injecting Kubernetes failures..."
-  echo "  Layer 1: Tainting nodes..."
+  echo "  Tainting nodes..."
   kubectl taint nodes --all demo=scary:NoSchedule 2>&1 || echo "  (kubectl not available or already tainted)"
-
-  # Layer 2: Over-allocate resources in deployment manifest
-  if [ -f "gitops/manifests/spider-rainbows/deployment.yaml" ]; then
-    echo "  Layer 2: Over-allocating resources..."
-    sed -i.bak 's|memory: "[^"]*"|memory: "10Gi"|' gitops/manifests/spider-rainbows/deployment.yaml
-    sed -i.bak 's|cpu: "[^"]*"|cpu: "4000m"|' gitops/manifests/spider-rainbows/deployment.yaml
-
-    # Validate resource over-allocation succeeded
-    if ! grep -q 'memory: "10Gi"' gitops/manifests/spider-rainbows/deployment.yaml; then
-      echo "❌ Error: Failed to over-allocate memory in deployment.yaml" >&3
-      exit 1
-    fi
-    if ! grep -q 'cpu: "4000m"' gitops/manifests/spider-rainbows/deployment.yaml; then
-      echo "❌ Error: Failed to over-allocate CPU in deployment.yaml" >&3
-      exit 1
-    fi
-
-    echo "  Layer 3: Breaking liveness probe..."
-    sed -i.bak 's|path: /health|path: /healthz|' gitops/manifests/spider-rainbows/deployment.yaml
-    sed -i.bak 's|port: 8080|port: 9090|' gitops/manifests/spider-rainbows/deployment.yaml
-
-    # Validate liveness probe breaking succeeded
-    if ! grep -q 'path: /healthz' gitops/manifests/spider-rainbows/deployment.yaml; then
-      echo "❌ Error: Failed to break liveness probe path in deployment.yaml" >&3
-      exit 1
-    fi
-    if ! grep -q 'port: 9090' gitops/manifests/spider-rainbows/deployment.yaml; then
-      echo "❌ Error: Failed to break liveness probe port in deployment.yaml" >&3
-      exit 1
-    fi
-
-    rm gitops/manifests/spider-rainbows/deployment.yaml.bak
-    echo "  K8s failures injected successfully"
-  else
-    echo "❌ Error: deployment.yaml not found at gitops/manifests/spider-rainbows/" >&3
-    exit 1
-  fi
+  echo "  K8s failures injected successfully"
 
   echo ""
   echo "✅ V3 development complete!" >&3
