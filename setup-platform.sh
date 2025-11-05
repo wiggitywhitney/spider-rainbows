@@ -742,25 +742,6 @@ configure_argocd_password() {
     log_success "ArgoCD admin password configured"
 }
 
-configure_argocd_sync_interval() {
-    log_info "Configuring ArgoCD sync interval to 5 seconds..."
-
-    # Configure ArgoCD to sync every 5 seconds
-    kubectl patch configmap argocd-cm -n argocd --type merge \
-        -p '{"data":{"timeout.reconciliation":"5s"}}'
-
-    log_success "ArgoCD sync interval set to 5 seconds"
-
-    # Restart argocd-application-controller to apply the new setting
-    log_info "Restarting ArgoCD application controller..."
-    kubectl rollout restart statefulset argocd-application-controller -n argocd
-
-    # Wait for the restart to complete
-    kubectl rollout status statefulset argocd-application-controller -n argocd --timeout=120s
-
-    log_success "ArgoCD application controller restarted"
-}
-
 configure_argocd_webhook_secret() {
     log_info "Configuring ArgoCD webhook secret for instant GitHub sync..."
 
@@ -1286,7 +1267,6 @@ main() {
     # Phase 2: ArgoCD Installation
     install_argocd
     configure_argocd_password
-    configure_argocd_sync_interval
     configure_argocd_webhook_secret
     install_argocd_ingress
     validate_argocd_health
