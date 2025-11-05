@@ -6,7 +6,7 @@ metadata:
   labels:
     app: spider-rainbows
   annotations:
-    test-webhook-sync: "2025-11-05T01:10:00Z"
+    test-webhook-sync: "2025-11-05T01:24:00Z"
 spec:
   replicas: 2
   selector:
