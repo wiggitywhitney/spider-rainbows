@@ -29,7 +29,7 @@ INGRESS_NGINX_VERSION="v1.9.4"
 
 # GCP Configuration
 GCP_PROJECT="demoo-ooclock"
-GCP_REGION="us-east1"
+GCP_REGION="us-central1"
 GCP_MACHINE_TYPE="n1-standard-4"
 GCP_NUM_NODES="1"
 
@@ -112,7 +112,7 @@ check_kind_prerequisites() {
     else
         # Check kubectl version (v1.23+ required for MCP token wait functionality)
         local kubectl_version
-        kubectl_version=$(kubectl version --client -o json 2>/dev/null | grep -o '"minor":"[0-9]*"' | grep -o '[0-9]*' || echo "0")
+        kubectl_version=$(kubectl version --client -o json 2>/dev/null | jq -r '.clientVersion.minor' || echo "0")
         if [ "$kubectl_version" -lt 23 ]; then
             log_warning "kubectl v1.23+ recommended (you have v1.$kubectl_version)"
             log_warning "MCP server token authentication may require manual wait times"
@@ -196,7 +196,7 @@ check_gcp_prerequisites() {
     else
         # Check kubectl version (v1.23+ required for MCP token wait functionality)
         local kubectl_version
-        kubectl_version=$(kubectl version --client -o json 2>/dev/null | grep -o '"minor":"[0-9]*"' | grep -o '[0-9]*' || echo "0")
+        kubectl_version=$(kubectl version --client -o json 2>/dev/null | jq -r '.clientVersion.minor' || echo "0")
         if [ "$kubectl_version" -lt 23 ]; then
             log_warning "kubectl v1.23+ recommended (you have v1.$kubectl_version)"
             log_warning "MCP server token authentication may require manual wait times"
