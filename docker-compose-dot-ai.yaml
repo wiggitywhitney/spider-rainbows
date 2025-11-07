@@ -17,13 +17,13 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       # Qdrant Vector Database connection
       QDRANT_URL: http://localhost:${QDRANT_PORT:-6333}
-      # Kubernetes configuration - using token-based auth for Docker compatibility
-      KUBECONFIG: /root/.kube/config
+      # Kubernetes configuration - mount entire .kube directory for reliability
+      # For GKE: uses token-based config-dot-ai (no gcloud plugin needed)
+      # For Kind: uses default config (direct access)
+      KUBECONFIG: /root/.kube/config-dot-ai
     volumes:
-      # Mount token-based kubeconfig (no gcloud plugin needed)
-      - ~/.kube/config-dot-ai:/root/.kube/config:ro
-      # Mount cluster CA certificate
-      - /tmp/ca.crt:/root/.kube/ca.crt:ro
+      # Mount entire .kube directory to avoid Docker directory creation issues
+      - ~/.kube:/root/.kube:ro
     depends_on:
       - qdrant
 

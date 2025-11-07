@@ -88,9 +88,18 @@ for cluster in "${kind_clusters[@]}"; do
         if kind delete cluster --name "$cluster"; then
             log_success "Kind cluster deleted successfully"
 
-            # Clean up MCP authentication files (symlink for Kind clusters)
+            # Clean up kubeconfig context for Kind cluster
+            log_info "Cleaning up kubeconfig..."
+            CONTEXT_NAME="kind-${cluster}"
+            kubectl config delete-context "$CONTEXT_NAME" 2>/dev/null || true
+            kubectl config unset "users.$CONTEXT_NAME" 2>/dev/null || true
+            kubectl config unset "clusters.$CONTEXT_NAME" 2>/dev/null || true
+            log_success "Kubeconfig context cleaned up"
+
+            # Clean up MCP authentication files (copy for Kind clusters)
             log_info "Cleaning up MCP authentication files..."
             rm -rf ~/.kube/config-dot-ai
+            rm -rf ~/.kube/ca.crt
             rm -rf /tmp/ca.crt
             rm -rf /tmp/dot-ai-token.txt
             log_success "MCP authentication files removed"
@@ -132,6 +141,7 @@ for cluster in "${gcp_clusters[@]}"; do
             # Clean up MCP authentication files (including Docker-created directories)
             log_info "Cleaning up MCP authentication files..."
             rm -rf ~/.kube/config-dot-ai
+            rm -rf ~/.kube/ca.crt
             rm -rf /tmp/ca.crt
             rm -rf /tmp/dot-ai-token.txt
             log_success "MCP authentication files removed"

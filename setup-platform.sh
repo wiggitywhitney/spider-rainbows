@@ -560,7 +560,7 @@ configure_mcp_authentication() {
         return 0
     fi
 
-    # For Kind clusters, clean up any stale GCP MCP configuration and create symlink
+    # For Kind clusters, create a copy of kubeconfig (not symlink)
     if [ "$DEPLOYMENT_MODE" != "gcp" ]; then
         log_info "Kind cluster detected - MCP works with default config"
 
@@ -573,9 +573,10 @@ configure_mcp_authentication() {
             log_success "Stale MCP authentication files removed"
         fi
 
-        # Create symlink so docker-compose can mount Kind's kubeconfig
+        # Copy Kind's kubeconfig (not symlink) to avoid Docker mount issues
+        # Docker can create directories instead of files with symlinks
         log_info "Configuring MCP to use Kind cluster kubeconfig..."
-        ln -sf ~/.kube/config ~/.kube/config-dot-ai
+        cp ~/.kube/config ~/.kube/config-dot-ai
         log_success "MCP configured to use Kind cluster kubeconfig"
         MCP_CONFIGURED=true  # Set flag to remind about Claude Code restart
 
@@ -646,6 +647,8 @@ EOF
         ca_extracted=true
         if [ -s /tmp/ca.crt ]; then
             ca_valid=true
+            # Also copy to .kube directory for Docker volume mount access
+            cp /tmp/ca.crt ~/.kube/ca.crt
         fi
     fi
 
