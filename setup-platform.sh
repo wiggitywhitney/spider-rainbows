@@ -676,6 +676,9 @@ EOF
     mkdir -p ~/.kube
     chmod 700 ~/.kube
 
+    # Clean up any existing config-dot-ai file or directory
+    rm -rf ~/.kube/config-dot-ai
+
     # Create token-based kubeconfig
     # Note: CA cert path references /root/.kube/ca.crt (container path)
     # Docker Compose mounts /tmp/ca.crt (host) -> /root/.kube/ca.crt (container)
