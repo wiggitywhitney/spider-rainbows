@@ -104,7 +104,21 @@ find prds -name "*-v3-horrifying-spider-images.md" ! -name "26-v3-horrifying-spi
 # Remove K8s node taints (graceful failure if cluster unavailable)
 kubectl taint nodes --all demo=scary:NoSchedule- 2>/dev/null || true
 
-# Remove tolerations from deployment (graceful failure if cluster unavailable)
+# Remove tolerations from Git deployment manifest (source of truth for ArgoCD)
+DEPLOYMENT_FILE="gitops/manifests/spider-rainbows/deployment.yaml"
+if [ -f "$DEPLOYMENT_FILE" ] && grep -q "tolerations:" "$DEPLOYMENT_FILE"; then
+  echo "  Removing tolerations from deployment manifest..."
+  # Use awk to remove tolerations block (from "tolerations:" up to but not including "containers:")
+  awk '
+    /^[[:space:]]*tolerations:/ { skip=1; next }
+    /^[[:space:]]*containers:/ { skip=0 }
+    !skip { print }
+  ' "$DEPLOYMENT_FILE" > "$DEPLOYMENT_FILE.tmp"
+  mv "$DEPLOYMENT_FILE.tmp" "$DEPLOYMENT_FILE"
+  echo "  ✅ Removed tolerations from Git deployment manifest"
+fi
+
+# Remove tolerations from live deployment (graceful failure if cluster unavailable)
 kubectl patch deployment spider-rainbows -n default --type=json -p='[{"op": "remove", "path": "/spec/template/spec/tolerations"}]' 2>/dev/null || true
 
 # ==============================================================================
