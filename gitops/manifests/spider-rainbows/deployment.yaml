@@ -22,7 +22,7 @@ spec:
         effect: NoSchedule
       containers:
       - name: spider-rainbows
-        image: wiggitywhitney/spider-rainbows:v3-main-3cf0a81
+        image: wiggitywhitney/spider-rainbows:v3-main-153a2da
         ports:
         - containerPort: 8080
           name: http
