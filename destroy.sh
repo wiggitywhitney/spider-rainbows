@@ -4,7 +4,7 @@ set -e
 
 CLUSTER_NAME_PREFIX="spider-rainbows"
 GCP_PROJECT="demoo-ooclock"
-GCP_REGION="us-east1"
+GCP_REGION="us-central1"
 
 # Colors for output
 RED='\033[0;31m'
