@@ -1134,11 +1134,21 @@ validate_all_components() {
 
     # 1. Cluster Health
     log_info "[1/6] Validating cluster..."
-    if kubectl get nodes --no-headers 2>/dev/null | grep -q "Ready"; then
-        local node_count
-        node_count=$(kubectl get nodes --no-headers 2>/dev/null | grep "Ready" | wc -l | tr -d ' ')
-        log_success "  ✓ Cluster nodes: $node_count Ready"
-    else
+    # Retry node check to handle transient API issues
+    local node_check_attempts=0
+    local node_check_success=false
+    while [ $node_check_attempts -lt 3 ]; do
+        if kubectl get nodes --no-headers 2>/dev/null | grep -q "Ready"; then
+            local node_count
+            node_count=$(kubectl get nodes --no-headers 2>/dev/null | grep "Ready" | wc -l | tr -d ' ')
+            log_success "  ✓ Cluster nodes: $node_count Ready"
+            node_check_success=true
+            break
+        fi
+        node_check_attempts=$((node_check_attempts + 1))
+        sleep 2
+    done
+    if [ "$node_check_success" = false ]; then
         log_error "  ✗ Cluster nodes: Not Ready"
         failures=$((failures + 1))
     fi
