@@ -3,7 +3,7 @@ const SpiderImage = ({ rainbowWidth }) => {
   const spiderWidth = rainbowWidth * 0.25;
 
   return (
-    <div style={{ display: "flex", justifyContent: "center", position: "absolute", top: "10%", left: 0, right: 0, zIndex: 5 }}>
+    <div className="spider-container">
       {/* Version one of this drawing is preposterous. */}
       {/* Spiders do not smile. They don't have teeth. They don't even have jaws. */}
       {/*  */}
