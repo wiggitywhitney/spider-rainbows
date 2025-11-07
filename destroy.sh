@@ -240,10 +240,3 @@ log_success "=============================================="
 log_success "✅ Cleanup complete"
 log_success "=============================================="
 echo ""
-
-# Show MCP reminder if files were cleaned up
-if [ "$MCP_CLEANED" = true ]; then
-    log_info "⚠️  MCP Server Authentication Cleaned Up"
-    log_info "Restart Claude Code if using dot-ai MCP server"
-    echo ""
-fi

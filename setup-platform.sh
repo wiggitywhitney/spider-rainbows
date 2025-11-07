@@ -1349,8 +1349,10 @@ main() {
 
         # Show MCP reminder if it was configured
         if [ "$MCP_CONFIGURED" = true ]; then
-            log_info "⚠️  MCP Server Authentication Updated"
-            log_info "Restart Claude Code to connect dot-ai MCP server to this cluster"
+            echo ""
+            log_warning "🚨🚨🚨 IMPORTANT: RESTART CLAUDE CODE NOW! 🚨🚨🚨"
+            log_warning "The dot-ai MCP server needs to reconnect to the new cluster"
+            log_warning "Restart Claude Code before using MCP tools"
             echo ""
         fi
     else
