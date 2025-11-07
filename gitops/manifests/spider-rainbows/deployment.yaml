@@ -15,6 +15,11 @@ spec:
       labels:
         app: spider-rainbows
     spec:
+      tolerations:
+      - key: demo
+        operator: Equal
+        value: scary
+        effect: NoSchedule
       containers:
       - name: spider-rainbows
         image: wiggitywhitney/spider-rainbows:v3-main-3cf0a81
