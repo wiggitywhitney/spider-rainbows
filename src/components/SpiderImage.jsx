@@ -1,6 +1,6 @@
 import './SpiderImage.css';
 const SpiderImage = ({ rainbowWidth }) => {
-  const spiderWidth = rainbowWidth * 0.50;
+  const spiderWidth = rainbowWidth * 0.25;
 
   return (
     <div style={{ display: "flex", justifyContent: "center", position: "absolute", top: "10%", left: 0, right: 0, zIndex: 5 }}>
