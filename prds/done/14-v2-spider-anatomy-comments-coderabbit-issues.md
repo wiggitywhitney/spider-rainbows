@@ -1,9 +1,14 @@
 # PRD: V2 Spider Anatomy Comments + CodeRabbit Issues
 
-**Status**: Draft
+**Status**: Complete
 **Created**: 2025-10-31
+**Completed**: 2025-11-10
 **GitHub Issue**: [#20](https://github.com/wiggitywhitney/spider-rainbows/issues/20)
 **Priority**: High
+
+**Note**: V2 work (Milestones 1-3) completed in this PRD. V3 work (originally Milestones 4-6) was split into separate PRDs:
+- PRD #26: V3 Horrifying Spider Images feature
+- PRD #27: V3 Demo Automation Infrastructure
 
 ---
 
@@ -335,55 +340,21 @@ Add comments about "wildly scariest spider image yet" and introduce cascading Ku
 
 ---
 
-### Milestone 4: V3 Script Implementation (Part 4)
+### Milestone 4: V3 Script Implementation (Part 4) - MOVED TO PRD #27
 
-**Demo Context**: This milestone supports [DEMO-FLOW.md Part 4](../DEMO-FLOW.md#part-3-v2--v3-platform-provided-tools--kubernetes-failures) - platform-provided tools and K8s troubleshooting. See also [CONFERENCE_TALK_OUTLINE.md Part 4](../CONFERENCE_TALK_OUTLINE.md#part-four-demoing-platform-provided-slash-commands-and-mcp-tools).
-
-- [ ] Add v3 section to `develop-next-version.sh`
-- [ ] Script creates demo PRD file (`prds/demo-scariest-spiders.md`) showing "mostly complete" status
-- [ ] Demo PRD has realistic milestones (2.5/3 complete)
-- [ ] Add user-provided "scariest spider" comments injection
-- [ ] Add kubectl command to taint all nodes: `kubectl taint nodes --all demo=scary:NoSchedule`
-- [ ] Add sed/yaml modification to increase resource requests (10Gi memory, 4000m CPU)
-- [ ] Add sed/yaml modification to break liveness probe (path: `/healthz`, port: `9090`)
-- [ ] Script creates feature branch automatically
-- [ ] Test script execution with active cluster
-- [ ] Test v3 spider image display and scaling (v3 has different dimensions than v1/v2)
-
-**Important Note**: V3 spider image has different dimensions than v1/v2. Test carefully to ensure proper display.
-
-**Success Criteria**: Script successfully generates v2→v3 transition with demo PRD and all 3 K8s failures
+**Note**: This milestone was moved to PRD #27 (V3 Demo Automation Infrastructure) which handles v2→v3 automation including K8s failures.
 
 ---
 
-### Milestone 5: Slash Commands Integration
+### Milestone 5: Slash Commands Integration - MOVED TO PRD #27
 
-**Demo Context**: Critical for [DEMO-FLOW.md Part 4 Step 3](../DEMO-FLOW.md#step-3-execute-prd-done-command) - executing `/prd-done` workflow live during demo.
-
-- [ ] Verify duplicate MCP PRD commands are hidden/disabled
-- [ ] Keep local slash commands: `/prd-create`, `/prd-start`, `/prd-next`, `/prd-update-progress`, `/prd-done`
-- [ ] Test `/prd-done` workflow with demo PRD
-- [ ] Verify `/prd-done` handles: branch creation, PR creation, CodeRabbit review, merge
-- [ ] Test CodeRabbit review integration within `/prd-done` workflow
-- [ ] Verify organizational compliance enforcement (code review required)
-
-**Success Criteria**: Slash commands work correctly, no duplicate MCP commands visible, `/prd-done` executes complete workflow
+**Note**: This milestone was moved to PRD #27 (V3 Demo Automation Infrastructure) which handles `/prd-done` workflow integration.
 
 ---
 
-### Milestone 6: Integration Testing
+### Milestone 6: Integration Testing - MOVED TO PRD #27
 
-**Demo Context**: Full rehearsal following [DEMO-FLOW.md](../DEMO-FLOW.md) exactly as it will be presented. Reference [CONFERENCE_TALK_OUTLINE.md](../CONFERENCE_TALK_OUTLINE.md) for timing and narrative.
-
-- [ ] Test complete Part 2 flow: v1→v2 with code issues + CodeRabbit review (NO PRD mentions)
-- [ ] Test complete Part 4 flow: v2→v3 with slash commands + K8s failures + MCP diagnosis
-- [ ] Verify demo PRD shows correct "mostly complete" state
-- [ ] Verify `/prd-done` workflow completes successfully
-- [ ] Verify cascading failure behavior (fix taint → see resources → see probe)
-- [ ] Verify all issues are remediable within demo timeframe
-- [ ] Practice full demo run-through
-
-**Success Criteria**: Both demo parts work end-to-end with all intended failures, remediations, and platform tool demonstrations
+**Note**: This milestone was moved to PRD #27 (V3 Demo Automation Infrastructure) which handles end-to-end demo testing.
 
 ---
 
