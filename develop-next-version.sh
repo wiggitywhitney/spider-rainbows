@@ -215,11 +215,16 @@ if [ "$NEXT_VERSION" = "3" ]; then
     exit 1
   fi
 
-  # Commit the clean v2 baseline on main
-  echo "  Committing v2 baseline to main..."
-  git add src/components/SpiderImage.jsx src/components/SurpriseSpider.jsx
-  git commit -m "chore: establish clean v2 baseline for v3 development"
-  echo "  v2 baseline committed"
+  # Commit the clean v2 baseline on main (only if there are changes)
+  echo "  Checking for changes to commit..."
+  if git diff --quiet src/components/SpiderImage.jsx src/components/SurpriseSpider.jsx; then
+    echo "  ✓ Already at clean v2 baseline (no changes needed)"
+  else
+    echo "  Committing v2 baseline to main..."
+    git add src/components/SpiderImage.jsx src/components/SurpriseSpider.jsx
+    git commit -m "chore: establish clean v2 baseline for v3 development"
+    echo "  v2 baseline committed"
+  fi
 
   # Step 2: Create feature branch
   echo "Step 2: Creating feature branch..."
@@ -228,6 +233,12 @@ if [ "$NEXT_VERSION" = "3" ]; then
   echo "  Branch: $FEATURE_BRANCH"
 
   # Step 3: Create new GitHub issue (copy issue #26, remove demo reference)
+  # First verify gh CLI is authenticated
+  if ! gh auth status &>/dev/null; then
+    echo "❌ Error: GitHub CLI (gh) is not authenticated" >&3
+    echo "  Run: gh auth login" >&3
+    exit 1
+  fi
   echo "Step 3: Creating new GitHub issue..."
   ISSUE_TITLE=$(gh issue view 26 --json title -q .title 2>&1)
   echo "  Issue title: $ISSUE_TITLE"
@@ -274,14 +285,19 @@ if [ "$NEXT_VERSION" = "3" ]; then
   echo "Step 4: Generating PRD file..."
   NEW_PRD_FILE="prds/${NEW_ISSUE_NUM}-v3-horrifying-spider-images.md"
 
-  # Verify source PRD exists
-  if [ ! -f "prds/26-v3-horrifying-spider-images.md" ]; then
-    echo "❌ Error: Source PRD file not found: prds/26-v3-horrifying-spider-images.md" >&3
+  # Verify source PRD exists (check both active and done directories)
+  SOURCE_PRD=""
+  if [ -f "prds/26-v3-horrifying-spider-images.md" ]; then
+    SOURCE_PRD="prds/26-v3-horrifying-spider-images.md"
+  elif [ -f "prds/done/26-v3-horrifying-spider-images.md" ]; then
+    SOURCE_PRD="prds/done/26-v3-horrifying-spider-images.md"
+  else
+    echo "❌ Error: Source PRD file not found in prds/ or prds/done/" >&3
     exit 1
   fi
 
-  cp prds/26-v3-horrifying-spider-images.md "$NEW_PRD_FILE"
-  echo "  Copied PRD-26 to $NEW_PRD_FILE"
+  cp "$SOURCE_PRD" "$NEW_PRD_FILE"
+  echo "  Copied PRD-26 from $(dirname "$SOURCE_PRD") to $NEW_PRD_FILE"
 
   # Update issue number references in PRD
   sed -i.bak "s|#26|#${NEW_ISSUE_NUM}|g" "$NEW_PRD_FILE"
@@ -315,63 +331,52 @@ if [ "$NEXT_VERSION" = "3" ]; then
   echo "  Cherry-picking commit 1b0bcc1..."
 
   # Cherry-pick may have PRD conflicts (expected - we discard those changes)
-  # Capture output and exit code to distinguish between expected and unexpected failures
-  CHERRY_PICK_OUTPUT=$(git cherry-pick 1b0bcc1 --no-commit 2>&1) || CHERRY_PICK_STATUS=$?
+  if git cherry-pick 1b0bcc1 --no-commit 2>&1; then
+    echo "  ✓ Cherry-pick succeeded without conflicts"
+  else
+    # Cherry-pick had conflicts - check if they're only in the PRD file (expected)
+    CONFLICTS=$(git diff --name-only --diff-filter=U 2>/dev/null || true)
+    NON_PRD_CONFLICTS=$(echo "$CONFLICTS" | grep -v "prds/26-v3-horrifying-spider-images.md" || true)
 
-  # If cherry-pick failed, verify it's only due to conflicts (not other git errors)
-  if [ "${CHERRY_PICK_STATUS:-0}" -ne 0 ]; then
-    # Check if working directory is clean (no conflicts) - this would indicate a different error
-    if ! git diff --name-only --diff-filter=U &>/dev/null; then
-      echo "❌ Error: Cherry-pick failed with non-conflict error:" >&3
-      echo "$CHERRY_PICK_OUTPUT" >&3
+    if [ -n "$NON_PRD_CONFLICTS" ]; then
+      echo "❌ Error: Cherry-pick has conflicts in non-PRD files:" >&3
+      echo "$NON_PRD_CONFLICTS" >&3
+      echo "  This suggests main branch is not in a clean v2 state" >&3
+      git cherry-pick --abort 2>/dev/null || true
       exit 1
     fi
-  fi
-
-  # Check if there are conflicts in files OTHER than the PRD
-  CONFLICTS=$(git diff --name-only --diff-filter=U 2>&1 || true)
-  NON_PRD_CONFLICTS=$(echo "$CONFLICTS" | grep -v "prds/26-v3-horrifying-spider-images.md" || true)
-
-  if [ -n "$NON_PRD_CONFLICTS" ]; then
-    echo "❌ Error: Cherry-pick has conflicts in non-PRD files:" >&3
-    echo "$NON_PRD_CONFLICTS" >&3
-    echo "  This suggests main branch is not in a clean v2 state" >&3
-    exit 1
+    echo "  ✓ Cherry-pick had expected PRD conflicts"
   fi
 
   # Remove PRD changes from staging (we already copied it with new issue number)
-  echo "  Removing PRD from staging..."
-  git reset HEAD prds/26-v3-horrifying-spider-images.md 2>&1 || true
-  git checkout -- prds/26-v3-horrifying-spider-images.md 2>&1 || true
-  git add -u 2>&1  # Stage all other changes
+  echo "  Removing old PRD from staging..."
+  git reset HEAD prds/26-v3-horrifying-spider-images.md 2>/dev/null || true
+  git checkout -- prds/26-v3-horrifying-spider-images.md 2>/dev/null || true
+  git add -u 2>/dev/null  # Stage all other changes
 
   echo "  Cherry-picking commit b74dbf2..."
-  CHERRY_PICK_OUTPUT=$(git cherry-pick b74dbf2 --no-commit 2>&1) || CHERRY_PICK_STATUS=$?
+  if git cherry-pick b74dbf2 --no-commit 2>&1; then
+    echo "  ✓ Cherry-pick succeeded without conflicts"
+  else
+    # Check for conflicts
+    CONFLICTS=$(git diff --name-only --diff-filter=U 2>/dev/null || true)
+    NON_PRD_CONFLICTS=$(echo "$CONFLICTS" | grep -v "prds/26-v3-horrifying-spider-images.md" || true)
 
-  # If cherry-pick failed, verify it's only due to conflicts
-  if [ "${CHERRY_PICK_STATUS:-0}" -ne 0 ]; then
-    if ! git diff --name-only --diff-filter=U &>/dev/null; then
-      echo "❌ Error: Cherry-pick failed with non-conflict error:" >&3
-      echo "$CHERRY_PICK_OUTPUT" >&3
+    if [ -n "$NON_PRD_CONFLICTS" ]; then
+      echo "❌ Error: Cherry-pick has conflicts in non-PRD files:" >&3
+      echo "$NON_PRD_CONFLICTS" >&3
+      git cherry-pick --abort 2>/dev/null || true
       exit 1
     fi
+    echo "  ✓ Cherry-pick had expected PRD conflicts"
   fi
 
-  # Check for non-PRD conflicts again
-  CONFLICTS=$(git diff --name-only --diff-filter=U 2>&1 || true)
-  NON_PRD_CONFLICTS=$(echo "$CONFLICTS" | grep -v "prds/26-v3-horrifying-spider-images.md" || true)
-
-  if [ -n "$NON_PRD_CONFLICTS" ]; then
-    echo "❌ Error: Cherry-pick has conflicts in non-PRD files:" >&3
-    echo "$NON_PRD_CONFLICTS" >&3
-    exit 1
-  fi
-
-  # Remove PRD changes from staging
-  git reset HEAD prds/26-v3-horrifying-spider-images.md 2>&1 || true
-  git checkout -- prds/26-v3-horrifying-spider-images.md 2>&1 || true
-  git add -u 2>&1  # Stage all other changes
-  echo "  Cherry-pick complete"
+  # Remove PRD changes from staging again
+  git reset HEAD prds/26-v3-horrifying-spider-images.md 2>/dev/null || true
+  git checkout -- prds/26-v3-horrifying-spider-images.md 2>/dev/null || true
+  git add -u 2>/dev/null  # Stage all modified changes
+  git add "$NEW_PRD_FILE" 2>/dev/null  # Stage the new PRD file
+  echo "  ✓ Cherry-pick complete"
 
   # Step 6: Inject K8s failures
   echo "Step 6: Injecting Kubernetes failures..."
