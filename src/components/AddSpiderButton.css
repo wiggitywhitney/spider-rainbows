@@ -1,7 +1,7 @@
 /* Container for positioning */
 .add-spider-container {
   position: absolute;
-  bottom: -0px;
+  bottom: -60px;
   left: 25%;
   transform: translateX(-50%);
   z-index: 11;
