@@ -159,6 +159,38 @@ for cluster in "${gcp_clusters[@]}"; do
     echo ""
 done
 
+# Auto-cleanup Docker Compose containers if a cluster was deleted
+if [ "$CLUSTER_DELETED" = true ]; then
+    if command -v docker &> /dev/null; then
+        log_info "Checking for running Docker Compose containers..."
+
+        # Check for dot-ai MCP server container
+        DOT_AI_CONTAINER=$(docker ps --filter "name=dot-ai" --format "{{.ID}}" 2>/dev/null || true)
+
+        if [ -n "$DOT_AI_CONTAINER" ]; then
+            log_info "Found dot-ai MCP server container: $DOT_AI_CONTAINER"
+            read -p "Stop and remove dot-ai MCP server? [y/N]: " confirm
+            if [[ "$confirm" =~ ^[Yy]$ ]]; then
+                log_info "Stopping Docker Compose services..."
+                if [ -f "docker-compose-dot-ai.yaml" ]; then
+                    docker compose -f docker-compose-dot-ai.yaml down 2>/dev/null || docker stop "$DOT_AI_CONTAINER" 2>/dev/null
+                    log_success "Docker Compose services stopped"
+                else
+                    docker stop "$DOT_AI_CONTAINER" 2>/dev/null
+                    log_success "dot-ai container stopped"
+                fi
+            else
+                log_info "Skipped Docker Compose cleanup"
+            fi
+        else
+            log_info "No dot-ai containers running"
+        fi
+    else
+        log_warning "Docker not found - skipping container cleanup"
+    fi
+    echo ""
+fi
+
 # Auto-cleanup GitHub webhook if a cluster was deleted
 if [ "$CLUSTER_DELETED" = true ]; then
     if command -v gh &> /dev/null; then
